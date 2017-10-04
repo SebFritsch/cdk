@@ -1,14 +1,14 @@
 //TODO: CDK copyright info goes here
 package org.openscience.cdk.tools;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Stack;
+import java.util.Queue;
 
-import org.openscience.cdk.AtomRef;
 import org.openscience.cdk.graph.GraphUtil;
 import org.openscience.cdk.graph.GraphUtil.EdgeToBondMap;
 import org.openscience.cdk.interfaces.IAtom;
@@ -32,6 +32,11 @@ public class FunctionalGroupsFinder {
 		 */
 		NO_GENERALIZATION;
 	}
+	
+	/**
+	 * Flag to mark environmental C's in not-yet-generalized functional groups.
+	 */
+	private final static String ENVIRONMENTAL_C_FLAG = "ENVIRONMENTAL_C"; 
     
     /**
      * Default initial capacity of the list that takes the functional groups
@@ -178,6 +183,7 @@ public class FunctionalGroupsFinder {
     
     // TODO:	*	AtomContainerManipulator.extractSubstructure(IAtomContainer atomContainer, int... atomIndices)
     //				vs. cloning mol., deleting bonds/atoms & using ConnectivityChecker.partitionIntoMolecules(disconnectedContainer) ?
+    //			* 	DFS should be more memory efficient than BFS, but does not work with a boolean lastMarked. 
     public List<IAtomContainer> extractGroups(IAtomContainer molecule) throws CloneNotSupportedException{
     	List<IAtomContainer> functionalGroups = new ArrayList<>(initialOutputCapacity);
     	
@@ -186,40 +192,61 @@ public class FunctionalGroupsFinder {
     		int beginIdx = markedAtoms.iterator().next();
     		List<Integer> fGroupIndices = new ArrayList<>(FUNCTIONAL_GROUP_INITIAL_CAPACITY); //TODO: better to use #atoms-size int[] ?
     		
-    		// do a DFS from there
+    		System.out.println("###### SEARCHING NEW FUNCTIONAL GROUP FROM: "+ molecule.getAtom(beginIdx).getSymbol() + beginIdx);
+    		
+    		// do a BFS from there
     		boolean[] visited = new boolean[molecule.getAtomCount()];
-    		Stack<Integer> stack = new Stack<>();
-    		stack.add(beginIdx);
+    		Queue<Integer> queue = new ArrayDeque<>();
+    		queue.add(beginIdx);
     		visited[beginIdx] = true;
     		boolean lastMarked = true;
     		
-    		while(!stack.isEmpty()) {
-    			Integer idx = stack.pop();
+    		while(!queue.isEmpty()) {
+    			Integer idx = queue.poll();
     			// if we find a marked atom ...
     			if(markedAtoms.contains(idx)) {
+    				
+    				System.out.println("VISITED MARKED ATOM: "+ molecule.getAtom(idx).getSymbol() + idx);
+    				
     				// add its index to the functional group
     				fGroupIndices.add(idx);
     				// also scratch the index from markedAtoms
     				markedAtoms.remove(idx);
     				// make note that we had a marked atom
     				if(!lastMarked) lastMarked = true;
+    				
+    				System.out.println("SET LASTMARKED: : "+ lastMarked);
+    				
     				// and take look at the connected atoms
     				for(int connectedIdx : adjList[idx]) {
     					if(!visited[connectedIdx]) {
-    						stack.add(connectedIdx);
+    						queue.add(connectedIdx);
     						visited[connectedIdx] = true;
     					}
     				}
     			}
     			// if we find a C and the atom we came from was marked (= environmental C)...
     			else if(lastMarked && molecule.getAtom(idx).getAtomicNumber() == 6) {
+    				
+    				System.out.println("VISITED ENVIRONMENTAL C ATOM: "+ molecule.getAtom(idx).getSymbol() + idx);
+    				
     				// add its index to the functional group
     				fGroupIndices.add(idx);
+    				// if generalization is wanted later on, flag as environmental C
+    				if(mode != Mode.NO_GENERALIZATION) {
+    					molecule.getAtom(idx).setProperty(ENVIRONMENTAL_C_FLAG, true);
+    				}
     				// make note that this was not a marked atom
     				if(lastMarked) lastMarked = false;
     				// end here and do not look at connected atoms
+    				
+    				System.out.println("SET LASTMARKED: : "+ lastMarked);
+    			}
+    			else {
+    				System.out.println("VISITED NON_MARKED ATOM: "+ molecule.getAtom(idx).getSymbol() + idx);
     			}
     		}
+    		System.out.println("###### END OF FUNCTIONAL GROUP");
     		
     		// extract functional group from the collected indices
     		// FIXME: not a nice workaround, see todo above! 
