@@ -262,6 +262,49 @@ public class FunctionalGroupsFinder {
     	
     	return functionalGroups;
     }
+    
+    // TODO:	*	ATM: environmental C's are identified by an attached String property-flag
+    //				option 1: store all of them (across all FGs) in some data structure (HashMap?)
+    //				option 2: introduce inner class functionalGroup that stores an AC plus a HashSet with the env.C's idices.
+    //				option 3: do not remove marked atoms from map and search for C's not in the map.
+    //			*	is it faster to do pattern matching? see class Pattern & VentoFoggia
+    //			*	is it faster to do (unique) SMILES-String (regex) matching?
+    public void generalizeEnvironments(List<IAtomContainer> fGroups) {
+    	for(IAtomContainer fGroup : fGroups) {
+    		int atomCount = fGroup.getAtomCount();
+    		
+    		// STEP 1: 		Remove environments on marked C's
+    		// EXCEPTION: 	Substisubstituents on carbonyl (to distinguish aldehydes & ketones)
+    		boolean isAldehydeOrKetone = false;
+    		if(atomCount == 3 || atomCount == 4) {
+    			for(IBond bond : fGroup.bonds()) {
+    				if(bond.getOrder() == Order.DOUBLE 
+    						// FIXME: is there a simpler way?
+    						&& (bond.getBegin().getAtomicNumber() + bond.getEnd().getAtomicNumber() == 14 
+    						&& (bond.getBegin().getAtomicNumber() == 8 || bond.getBegin().getAtomicNumber() == 6))) {
+    					isAldehydeOrKetone = true;
+    				}
+    			}
+    		}
+    		if(!isAldehydeOrKetone) {
+    			for(IAtom atom : fGroup.atoms()) {
+    				if(atom.getProperty(ENVIRONMENTAL_C_FLAG) != null) {
+    					fGroup.removeAtom(atom);
+    				}
+    			}
+    		}
+    		
+    		// STEP 2: 		Fill valences on heteroatoms by R-Atoms (representing C or H)
+    		// EXCEPTION 1:	H's on -OH
+    		// EXCEPTION 2:	H's on simple amines and thiols (to distinguish secondary & tertiary amines and thiols & sulfides)
+
+    		// TODO!!!
+
+    	}
+    	
+    	// FIXME: remove when finished
+    	throw new UnsupportedOperationException("Method is WIP!");
+    }
 
     private static final boolean isHeteroatom(IAtom atom) {
     	// TODO does this make any difference to calling getAtomicNumber() each time?
