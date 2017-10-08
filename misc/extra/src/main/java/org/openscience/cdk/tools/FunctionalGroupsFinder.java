@@ -3,18 +3,23 @@ package org.openscience.cdk.tools;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 
+import org.openscience.cdk.Atom;
+import org.openscience.cdk.PseudoAtom;
+import org.openscience.cdk.exception.CDKException;
 import org.openscience.cdk.graph.GraphUtil;
 import org.openscience.cdk.graph.GraphUtil.EdgeToBondMap;
 import org.openscience.cdk.interfaces.IAtom;
 import org.openscience.cdk.interfaces.IAtomContainer;
 import org.openscience.cdk.interfaces.IBond;
 import org.openscience.cdk.interfaces.IBond.Order;
+import org.openscience.cdk.interfaces.IPseudoAtom;
 import org.openscience.cdk.tools.manipulator.AtomContainerManipulator;
 
 //TODO class info goes here
@@ -34,6 +39,11 @@ public class FunctionalGroupsFinder {
 	}
 	
 	/**
+	 * Defines whether an environmental C is connected to a heteroatom or another C.
+	 */
+	private static enum EnvironmentalCType{ C_ON_HETEROATOM, C_ON_C };
+	
+	/**
 	 * Flag to mark environmental C's in not-yet-generalized functional groups.
 	 */
 	private final static String ENVIRONMENTAL_C_FLAG = "ENVIRONMENTAL_C"; 
@@ -48,17 +58,13 @@ public class FunctionalGroupsFinder {
      */
     private final static int FUNCTIONAL_GROUP_INITIAL_CAPACITY = 15;
     
-    // Predicates
-    // TODO ?
-    
     private final Mode 		mode; 
     private final int		initialOutputCapacity;
     
     private EdgeToBondMap 		bondMap;
     private int[][] 			adjList;
     private HashSet<Integer>	markedAtoms;
-    private List<Integer>		unmarkedCAtoms;
-    private List<Integer> 		hAtoms;
+    //private List<Integer>		unmarkedCAtoms;
     
     public FunctionalGroupsFinder() {
     	this(Mode.DEFAULT, DEFAULT_INITIAL_OUTPUT_CAPACITY);
@@ -69,33 +75,38 @@ public class FunctionalGroupsFinder {
     	this.initialOutputCapacity = initialOutputCapacity;
     }
     
-    public  List<IAtomContainer> find(IAtomContainer molecule){
+    public  List<IAtomContainer> find(IAtomContainer molecule) throws CloneNotSupportedException{
     	// init GraphUtil+EdgeToBondMap
     	bondMap = EdgeToBondMap.withSpaceFor(molecule);
     	adjList = GraphUtil.toAdjList(molecule, bondMap);
     	
-    	markAtoms(molecule);
+    	// TODO!
     	
-    	// List<IAtomContainer> groupsWithEnvironment = partitionGroups(molecule);
+//    	markAtoms(molecule);
     	
-    	// if(mode) List<IAtomContainer> groupsGeneralized = generalizeGroups(groupsWithEnvironment);
+//    	List<IAtomContainer> fGroups = extractGroups(molecule);
     	
-    	//FIXME
+//    	if generalization is wanted do it
+    	
+    	//FIXME replace!
     	return new ArrayList<IAtomContainer>(initialOutputCapacity);
     }
 
-    // TODO:	*	check if it is worth it to mark connected Atoms (Hetero, C=C, C≡C, 3-rings) right away and check if 
-    // 				atom has already been marked at the beginning of the loop (HashSet<Integer idx>.contains)
-    //			*	is is better to mark atoms by setting a property instead of using an external HashSet?
-    private void markAtoms(IAtomContainer molecule) {
+    /**
+     * TODO / NOTES
+     * 
+     * TODO:	*	change public -> private
+     *			*	check if it is worth it to mark connected Atoms (Hetero, C=C, C≡C, 3-rings) right away and check if 
+     * 				atom has already been marked at the beginning of the loop (HashSet<Integer idx>.contains)
+     *			*	is is better to mark atoms by setting a property instead of using an external HashSet?
+     */
+    public void markAtoms(IAtomContainer molecule) {
     	// TODO: FOR DEBUGGING ONLY!
     	// stores which condition in the algorithm got the atom(index) marked
     	Map<Integer, String> debugAtomConditionMap = new HashMap<>(molecule.getAtomCount());
     	
-    	// classify marked, unmarked C's & rest (H's)
+    	// store marked atoms
     	markedAtoms = new HashSet<>(molecule.getAtomCount());	// TODO: initial capacity!
-    	unmarkedCAtoms = new ArrayList<>();						// TODO: initial capacity!	TODO: remove?!
-    	hAtoms = new ArrayList<>();								// TODO: initial capacity!	TODO: remove?!
     	
     	for(int idx = 0; idx < molecule.getAtomCount(); idx++) {
     		IAtom cAtom = molecule.getAtom(idx);
@@ -104,7 +115,6 @@ public class FunctionalGroupsFinder {
     		// NOTE: order assuming #Cs > #Hs > #HeteroAtoms
     		// if C...
     		if(atomicNr == 6) {
-    			// TODO: see condition for marking C's
     			boolean isMarked = false;		// to detect if foor loop ran with or without marking the C atom
     			int oNSCounter = 0;				// count for the number of connected O, N & S atoms
     			for(int connectedIdx : adjList[idx]) {
@@ -157,16 +167,19 @@ public class FunctionalGroupsFinder {
     				markedAtoms.add(idx);
     				continue;
     			}
-    			// if none of the conditions 2.X apply, store as unmarked C for now
-    			else {
-    				unmarkedCAtoms.add(idx);
-    			}
-    			
+    			// if none of the conditions 2.X apply, we have an unmarked C (not relevant here)
     		}
     		// if H...
     		else if (atomicNr == 1){
-    			// TODO: is collecting H's any useful?
-    			hAtoms.add(idx);
+    			// convert to implicit H
+    			IAtom connectedAtom = molecule.getAtom(adjList[idx][0]);
+    			
+    			if(connectedAtom.getImplicitHydrogenCount() == null) {
+    				connectedAtom.setImplicitHydrogenCount(1);
+    			}
+    			else {
+    				connectedAtom.setImplicitHydrogenCount(connectedAtom.getImplicitHydrogenCount() + 1);
+    			}
     			continue;
     		}
     		// if Hereroatom... (CONDITION 1)
@@ -177,35 +190,57 @@ public class FunctionalGroupsFinder {
     		}
     	}
     	
-    	//DEBUG CODE:
+    	//DEBUG only:
     	printMarkedAtomsDebugInfo(debugAtomConditionMap, molecule);
     }
     
-    // TODO:	*	AtomContainerManipulator.extractSubstructure(IAtomContainer atomContainer, int... atomIndices)
-    //				vs. cloning mol., deleting bonds/atoms & using ConnectivityChecker.partitionIntoMolecules(disconnectedContainer) ?
-    //			* 	DFS should be more memory efficient than BFS
+    /**
+     * TODO / NOTES
+     * 
+     * TODO:	*	change public -> private
+     *			*	Environmental C's & type could better be stored in HashMap instead of atom's property!
+     *			*	AtomContainerManipulator.extractSubstructure(IAtomContainer atomContainer, int... atomIndices)
+     *				vs. cloning mol., deleting bonds/atoms & using ConnectivityChecker.partitionIntoMolecules(disconnectedContainer) ?
+     *			* 	DFS should be more memory efficient than BFS
+     * NOTE:	*	returns groups with implicit hydrogens!
+     */
     public List<IAtomContainer> extractGroups(IAtomContainer molecule) throws CloneNotSupportedException{
     	List<IAtomContainer> functionalGroups = new ArrayList<>(initialOutputCapacity);
     	
-    	while(!markedAtoms.isEmpty()) { 				// TODO: = for with iterator?
+    	while(!markedAtoms.isEmpty()) {
     		// get next markedAtom as the starting node for the search 
     		int beginIdx = markedAtoms.iterator().next();
-    		List<Integer> fGroupIndices = new ArrayList<>(FUNCTIONAL_GROUP_INITIAL_CAPACITY); //TODO: better to use #atoms-size int[] ?
+    		List<Integer> fGroupIndices = new ArrayList<>(FUNCTIONAL_GROUP_INITIAL_CAPACITY);
     		
-    		System.out.println("###### SEARCHING NEW FUNCTIONAL GROUP FROM: "+ molecule.getAtom(beginIdx).getSymbol() + beginIdx);
+    		System.out.println("###### SEARCHING NEW FUNCTIONAL GROUP FROM: "+ molecule.getAtom(beginIdx).getSymbol() + beginIdx); // FIXME debug only
     		
     		// do a BFS from there
     		boolean[] visited = new boolean[molecule.getAtomCount()];
     		Queue<Integer> queue = new ArrayDeque<>();
     		queue.add(beginIdx);
     		visited[beginIdx] = true;
+    		boolean isParentC = false; // value does not matter, will be reset anyway
+    		int resetParentCount = 0;
     		
     		while(!queue.isEmpty()) {
     			Integer idx = queue.poll();
+    			IAtom currentAtom = molecule.getAtom(idx);
+    			
+    			if(mode != Mode.NO_GENERALIZATION) {
+    				// handle identification of whether or not the current parent is a C
+    				if(resetParentCount == 0) {
+    					isParentC = currentAtom.getAtomicNumber() == 6;
+    					resetParentCount = adjList[idx].length;
+    				}
+    				else {
+    					resetParentCount--;
+    				}
+    			}
+    			
     			// if we find a marked atom ...
     			if(markedAtoms.contains(idx)) {
     				
-    				System.out.println("VISITED MARKED ATOM: "+ molecule.getAtom(idx).getSymbol() + idx);
+    				System.out.println("VISITED MARKED ATOM: "+ currentAtom.getSymbol() + idx); // FIXME debug only
     				
     				// add its index to the functional group
     				fGroupIndices.add(idx);
@@ -220,29 +255,33 @@ public class FunctionalGroupsFinder {
     					}
     				}
     			}
-    			// if we find a C and the atom we came from was marked (= environmental C)...
-    			else if(molecule.getAtom(idx).getAtomicNumber() == 6) {
-    				
-    				System.out.println("VISITED ENVIRONMENTAL C ATOM: "+ molecule.getAtom(idx).getSymbol() + idx);
-    				
+    			// if we find a C...
+    			else if(currentAtom.getAtomicNumber() == 6) {
     				// add its index to the functional group
     				fGroupIndices.add(idx);
-    				// if generalization is wanted later on, flag as environmental C
+    				// if generalization is wanted later on, flag as environmental C (either connected to another C or a heteroatom)
     				if(mode != Mode.NO_GENERALIZATION) {
-    					molecule.getAtom(idx).setProperty(ENVIRONMENTAL_C_FLAG, true);
+    					EnvironmentalCType type = isParentC ? EnvironmentalCType.C_ON_C : EnvironmentalCType.C_ON_HETEROATOM;
+    					currentAtom.setProperty(ENVIRONMENTAL_C_FLAG, type);
     				}
     				// end here and do not look at connected atoms
+    				
+    				System.out.println("VISITED ENVIRONMENTAL C ATOM: "+ currentAtom.getSymbol() + idx +" connected to C: " + isParentC); // FIXME debug only
     			}
     			else {
-    				System.out.println("VISITED NON_MARKED ATOM: "+ molecule.getAtom(idx).getSymbol() + idx);
+    				System.out.println("VISITED NON_MARKED ATOM: "+ currentAtom.getSymbol() + idx); // FIXME debug only
     			}
+    			
+    			System.out.println("PARENT WAS C: "+ isParentC + "  Reset Counter: " + resetParentCount); // FIXME debug only
     		}
     		System.out.println("###### END OF FUNCTIONAL GROUP");
     		
     		// extract functional group from the collected indices
-    		// FIXME: not a nice workaround, see todo above! 
+    		// FIXME: workaround, see todo above! 
     		int[] fGroupIndicesArray = fGroupIndices.stream().mapToInt(i->i).toArray();
     		IAtomContainer fGroup = AtomContainerManipulator.extractSubstructure(molecule, fGroupIndicesArray);
+    		
+    		System.out.println("EXtracting.... indices: "+Arrays.toString(fGroupIndicesArray));
     		
     		// create ID
     		IDCreator.createIDs(fGroup);
@@ -254,47 +293,118 @@ public class FunctionalGroupsFinder {
     	return functionalGroups;
     }
     
-    // TODO:	*	ATM: environmental C's are identified by an attached String property-flag
-    //				option 1: store all of them (across all FGs) in some data structure (HashMap?)
-    //				option 2: introduce inner class functionalGroup that stores an AC plus a HashSet with the env.C's idices.
-    //				option 3: do not remove marked atoms from map and search for C's not in the map.
-    //			*	is it faster to do pattern matching? see class Pattern & VentoFoggia
-    //			*	is it faster to do (unique) SMILES-String (regex) matching?
-    public void generalizeEnvironments(List<IAtomContainer> fGroups) {
+    /**
+     * TODO / NOTES
+     * 
+     * TODO:	*	change to private void!
+     *			*	ATM: environmental C's are identified by an attached String property-flag
+     *				option 1: store all of them (across all FGs) in a list of Hashmaps (idx - type)
+     *				option 2: introduce inner class functionalGroup that stores an AC plus the HashSet.
+     *			*	is it faster to do pattern matching? see class Pattern & VentoFoggia
+     */
+    public List<IAtomContainer> generalizeEnvironments(List<IAtomContainer> fGroups) throws CDKException {
+    	fGroupLoop:
     	for(IAtomContainer fGroup : fGroups) {
+    		System.out.println("***GENERALIZING FGROUP*****************************************************"); // FIXME debug only
+    		
     		int atomCount = fGroup.getAtomCount();
     		
-    		// STEP 1: 		Remove environments on marked C's
-    		// EXCEPTION: 	Substisubstituents on carbonyl (to distinguish aldehydes & ketones)
-    		boolean isAldehydeOrKetone = false;
-    		if(atomCount == 3 || atomCount == 4) {
-    			for(IBond bond : fGroup.bonds()) {
-    				if(bond.getOrder() == Order.DOUBLE 
-    						// FIXME: is there a simpler way?
-    						&& (bond.getBegin().getAtomicNumber() + bond.getEnd().getAtomicNumber() == 14 
-    						&& (bond.getBegin().getAtomicNumber() == 8 || bond.getBegin().getAtomicNumber() == 6))) {
-    					isAldehydeOrKetone = true;
+    		System.out.println("#atoms: "+atomCount); // FIXME debug only
+    		
+    		// PRECHECKING FOR EXCEPTION CASES
+    		boolean isAldehydeOrKetone = false, isSingleO = false, isSecAmineOrSimpleThiol = false, isSingleN = false;
+    		
+    		if(atomCount == 2) {
+    			IBond bond = fGroup.bonds().iterator().next();
+    			if(bond.getOrder() == Order.SINGLE) {
+    				int atomicNumberSum = bond.getBegin().getAtomicNumber() + bond.getEnd().getAtomicNumber();
+    				switch(atomicNumberSum) {
+    				case 13: 	isSingleN = true; // C-N
+    				break;
+    				case 14:	isSingleO = true; // C-O
+    				break;
+    				case 22:	isSecAmineOrSimpleThiol = true; // C-S
+    				break;
     				}
     			}
     		}
-    		if(!isAldehydeOrKetone) {
-    			for(IAtom atom : fGroup.atoms()) {
-    				if(atom.getProperty(ENVIRONMENTAL_C_FLAG) != null) {
-    					fGroup.removeAtom(atom);
+    		else if(atomCount == 3 || atomCount == 4) {
+    			byte bondOrderSum = 0;
+    			for(IBond bond : fGroup.bonds()) {
+    				// check for C=O double bond
+    				if(bond.getOrder() == Order.DOUBLE) {
+    					if(bond.getBegin().getAtomicNumber() + bond.getEnd().getAtomicNumber() == 14) {
+    						isAldehydeOrKetone = true; // aldehyde or ketone
+    						break;
+    					}
+    				}
+    				bondOrderSum += bond.getOrder().numeric();
+    			}
+    			// if its neither aldehyde or ketone , all two bonds (-> 3 atoms) are single bonds...
+    			if(!isAldehydeOrKetone && bondOrderSum == 2) {
+    				int atomicNumberSum = 0;
+    				for(IAtom atom : fGroup.atoms()) {
+    					atomicNumberSum += atom.getAtomicNumber();
+    				}
+    				if(atomicNumberSum == 19) {
+    					isSecAmineOrSimpleThiol = true; // sec. amide 
     				}
     			}
     		}
     		
-    		// STEP 2: 		Fill valences on heteroatoms by R-Atoms (representing C or H)
-    		// EXCEPTION 1:	H's on -OH
-    		// EXCEPTION 2:	H's on simple amines and thiols (to distinguish secondary & tertiary amines and thiols & sulfides)
-
-    		// TODO!!!
-
+    		System.out.println("PRECHECK (isSingleO, isSingleN, isSecAmineOrSimpleThiol, isAldehydeOrKetone): "
+    				+ isSingleO + "," + isSingleN + "," + isSecAmineOrSimpleThiol + "," + isAldehydeOrKetone); // FIXME debug only
+    		
+    		// PROCESSING
+    		if(isSingleN || isSingleO || isSecAmineOrSimpleThiol) {
+    			for(IAtom atom : fGroup.atoms()) {
+    				if(atom.getAtomicNumber() != 6) {
+    					restoreExplicitHydrogens(fGroup, atom);
+    					if(!isSecAmineOrSimpleThiol) {
+    						break fGroupLoop; // break because we want to keep the C's in C-OH & C-NH2
+    					}
+    				}
+    			}
+    		}
+    		for(IAtom atom : fGroup.atoms()) {
+    			if(atom.getAtomicNumber() == 6) {
+    				// STEP 1
+    				EnvironmentalCType type = atom.getProperty(ENVIRONMENTAL_C_FLAG);
+    				if(type == EnvironmentalCType.C_ON_C && !isAldehydeOrKetone) {
+    					System.out.println("Removing env. C (on C)..."); // FIXME debug only
+    					fGroup.removeAtom(atom);
+    					continue;
+    				}
+    				// STEP 3
+    				else if(type == EnvironmentalCType.C_ON_HETEROATOM && !isSingleN && !isSingleO) {
+    					IPseudoAtom rAtom = new PseudoAtom("R");
+    					rAtom.setAttachPointNum(1);
+    					AtomContainerManipulator.replaceAtomByAtom(fGroup, atom, rAtom);
+    					System.out.println("Replacing env. C (on heteroatom) by R-Atom..."); // FIXME debug only
+    				}
+    			}
+    			// STEP 2
+    			else if(isHeteroatom(atom)){
+    				if(atom.getImplicitHydrogenCount() != null) {
+    					int rAtomsToAdd = atom.getImplicitHydrogenCount();
+    					for(int i = 0; i < rAtomsToAdd; i++) {
+    						IPseudoAtom rAtom = new PseudoAtom("R");
+    						rAtom.setAttachPointNum(1);
+    						IBond bond = atom.getBuilder().newBond();
+    						bond.setAtoms(new IAtom[] {rAtom, atom});
+    						bond.setOrder(Order.SINGLE); // TODO: necessary?
+    						fGroup.addAtom(rAtom);
+    						fGroup.addBond(bond);
+    						System.out.println("Filling Valence on Heteroatom with R-Atom..."); // FIXME debug only
+    					}
+    				}
+    			}
+    		}
     	}
     	
-    	// FIXME: remove when finished
-    	throw new UnsupportedOperationException("Method is WIP!");
+    	System.out.println("***************************************************************************");
+    
+    	return fGroups;
     }
 
     private static final boolean isHeteroatom(IAtom atom) {
@@ -303,26 +413,27 @@ public class FunctionalGroupsFinder {
     	return atomicNr != 1 && atomicNr != 6;
     }
     
-    // TODO: for testing only, remove!
-    public static IAtom[] getConnectedAtoms(int idx,IAtomContainer molecule, int[][] adjList) {
-    	IAtom[] connectedAtoms = new IAtom[adjList[idx].length];
-    	int counter = 0;
-    	for(int connectedIdx : adjList[idx]) {
-    		connectedAtoms[counter] = molecule.getAtom(connectedIdx);
-    		counter++;
+    // TODO: optimize?
+    private static void restoreExplicitHydrogens(IAtomContainer molecule, IAtom atom) {
+    	int formerAtomCount = molecule.getAtomCount();
+    	for(int i = 0; i < atom.getImplicitHydrogenCount(); i++) {
+    		IAtom hydrogen = new Atom(1);
+    		IBond bond = atom.getBuilder().newBond();
+    		bond.setAtoms(new IAtom[]{hydrogen, atom});
+    		bond.setOrder(Order.SINGLE); // TODO: necessary?
+    		molecule.addAtom(atom);
+    		molecule.addBond(bond);
     	}
-    	return connectedAtoms;
+    	System.out.println("Added "+ (molecule.getAtomCount()-formerAtomCount) +" atoms to "+atom.getSymbol()+molecule.indexOf(atom)); // FIXME debug only
+    	atom.setImplicitHydrogenCount(0);
     }
     
     // FOR DEBUGGING ONLY!
     public static void printMarkedAtomsDebugInfo(Map<Integer, String> debugAtomConditionMap, IAtomContainer mol) {
     	System.out.println("################# ATOM CONDITION DATA ###################");
-    	System.out.println("Size check... " + (mol.getAtomCount() == debugAtomConditionMap.size() ? "DONE" : "NUMBER OF ATOMS DOES NOT MATCH!"));
     	for(Map.Entry<Integer, String> e : debugAtomConditionMap.entrySet()) {
     		System.out.printf("#%d:%s   %s%n", e.getKey(), mol.getAtom(e.getKey()).getSymbol(), e.getValue());
     	}
     	System.out.println("##########################################################");
     }
-    
-
 }

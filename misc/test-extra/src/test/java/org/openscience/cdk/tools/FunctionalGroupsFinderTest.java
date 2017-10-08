@@ -18,32 +18,19 @@
  */
 package org.openscience.cdk.tools;
 
-import java.io.IOException;
 import java.io.StringWriter;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import org.junit.Assert;
 import org.junit.Test;
 import org.openscience.cdk.AtomContainer;
-import org.openscience.cdk.CDKConstants;
 import org.openscience.cdk.CDKTestCase;
 import org.openscience.cdk.aromaticity.Aromaticity;
 import org.openscience.cdk.exception.CDKException;
-import org.openscience.cdk.exception.InvalidSmilesException;
-import org.openscience.cdk.graph.GraphUtil;
-import org.openscience.cdk.graph.GraphUtil.EdgeToBondMap;
 import org.openscience.cdk.interfaces.IAtom;
 import org.openscience.cdk.interfaces.IAtomContainer;
-import org.openscience.cdk.interfaces.IPseudoAtom;
 import org.openscience.cdk.io.MDLV2000Writer;
-import org.openscience.cdk.io.MDLV3000Writer;
-import org.openscience.cdk.sgroup.Sgroup;
-import org.openscience.cdk.sgroup.SgroupType;
-import org.openscience.cdk.silent.Element;
-import org.openscience.cdk.silent.PseudoAtom;
 import org.openscience.cdk.silent.SilentChemObjectBuilder;
 import org.openscience.cdk.smiles.SmiFlavor;
 import org.openscience.cdk.smiles.SmilesGenerator;
@@ -58,38 +45,6 @@ public class FunctionalGroupsFinderTest extends CDKTestCase {
 
     public FunctionalGroupsFinderTest() {
         super();
-    }
-
-    @Test
-    public void testGetConnectedAtoms() {
-        SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
-        IAtomContainer mol = new AtomContainer();
-		try {
-			mol = smiPar.parseSmiles("CO");
-			addExplicitHydrogens(mol);
-		} catch (Exception e) {
-			Assert.assertFalse(true);
-		}
-		
-        
-        int cIdx = -1;
-        for(int idx = 0; idx < mol.getAtomCount(); idx++) {
-        	if(mol.getAtom(idx).getAtomicNumber() == 6) {
-        		cIdx = idx;
-        		break;
-        	}
-        }
-        
-        EdgeToBondMap bondMap = GraphUtil.EdgeToBondMap.withSpaceFor(mol);
-        int[][] adjList = GraphUtil.toAdjList(mol, bondMap);
-        
-        List<IAtom> actual = new ArrayList<>(Arrays.asList(FunctionalGroupsFinder.getConnectedAtoms(cIdx, mol, adjList)));
-        List<IAtom> expected = mol.getConnectedAtomsList(mol.getAtom(cIdx));
-        
-        System.out.println(actual.stream().map(a -> a.getSymbol()).collect(Collectors.toList()));
-        System.out.println(expected.stream().map(a -> a.getSymbol()).collect(Collectors.toList()));
-        
-        Assert.assertEquals(actual, expected);
     }
     
     @Test
@@ -110,7 +65,11 @@ public class FunctionalGroupsFinderTest extends CDKTestCase {
 		}
 		
 		FunctionalGroupsFinder gF = new FunctionalGroupsFinder();
-		gF.find(mol);
+		try {
+			gF.find(mol);
+		} catch (CloneNotSupportedException e) {
+			Assert.assertFalse(true);
+		}
 		
 		printToConsoleWithIndices(mol);
     }
@@ -120,7 +79,9 @@ public class FunctionalGroupsFinderTest extends CDKTestCase {
     	SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         IAtomContainer mol = new AtomContainer();
 		try {
-			mol = smiPar.parseSmiles("NC(O)C\\C=C\\CC(=O)C1CO1");
+			//mol = smiPar.parseSmiles("NC(O)C\\C=C\\CC(=O)C1CO1");
+			mol = smiPar.parseSmiles("CC(=O)N[C@@H]1[C@@H](NC(=N)N)C=C(O[C@H]1[C@H](O)[C@H](O)CO)C(=O)O");
+			
 			addExplicitHydrogens(mol);
 		} catch (Exception e) {
 			Assert.assertFalse(true);
@@ -133,7 +94,11 @@ public class FunctionalGroupsFinderTest extends CDKTestCase {
 		}
 		
 		FunctionalGroupsFinder gF = new FunctionalGroupsFinder();
-		gF.find(mol);
+		try {
+			gF.find(mol);
+		} catch (CloneNotSupportedException e1) {
+			Assert.assertFalse(true);
+		}
 		List<IAtomContainer> fGs = new ArrayList<>();
 		try {
 			fGs = gF.extractGroups(mol);
@@ -143,19 +108,42 @@ public class FunctionalGroupsFinderTest extends CDKTestCase {
 		
 		printToConsoleWithIndices(mol);
 		
-		System.out.println("FUNCTIONAL GROUPS:");
-		SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.AtomicMass);
-		for(IAtomContainer aC : fGs) {
-			String smiles = new String();
-			try {
-				smiles = smiGen.create(aC);
-			} catch (CDKException e) {
-				System.out.println("#ERROR# Could not generate SMILES!");
-			}
-			System.out.println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
-			System.out.println(smiles);
-			System.out.println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
+		System.out.println(fGs.size() + " FUNCTIONAL GROUPS:");
+		StringWriter stringWriter = new StringWriter();
+		MDLV2000Writer writer = new MDLV2000Writer(stringWriter);
+		for(IAtomContainer fG : fGs) {
+				try {
+					writer.writeMolecule(fG);
+				} catch (Exception e) {
+					Assert.assertFalse(true);
+				}
 		}
+		String molFile = stringWriter.toString();
+		System.out.println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
+		System.out.println(molFile);
+		System.out.println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
+
+		
+		try {
+			fGs = gF.generalizeEnvironments(fGs);
+		} catch (CDKException e) {
+			Assert.assertFalse(true);
+		}
+		
+		System.out.println("GENERALIZED FUNCTIONAL GROUPS:");
+		stringWriter = new StringWriter();
+		writer = new MDLV2000Writer(stringWriter);
+		for(IAtomContainer fG : fGs) {
+				try {
+					writer.writeMolecule(fG);
+				} catch (Exception e) {
+					Assert.assertFalse(true);
+				}
+		}
+		molFile = stringWriter.toString();
+		System.out.println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
+		System.out.println(molFile);
+		System.out.println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
     }
     
     private void printToConsoleWithIndices(IAtomContainer mol) {
