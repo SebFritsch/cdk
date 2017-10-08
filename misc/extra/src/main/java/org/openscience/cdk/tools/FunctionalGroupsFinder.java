@@ -183,7 +183,7 @@ public class FunctionalGroupsFinder {
     
     // TODO:	*	AtomContainerManipulator.extractSubstructure(IAtomContainer atomContainer, int... atomIndices)
     //				vs. cloning mol., deleting bonds/atoms & using ConnectivityChecker.partitionIntoMolecules(disconnectedContainer) ?
-    //			* 	DFS should be more memory efficient than BFS, but does not work with a boolean lastMarked. 
+    //			* 	DFS should be more memory efficient than BFS
     public List<IAtomContainer> extractGroups(IAtomContainer molecule) throws CloneNotSupportedException{
     	List<IAtomContainer> functionalGroups = new ArrayList<>(initialOutputCapacity);
     	
@@ -199,7 +199,6 @@ public class FunctionalGroupsFinder {
     		Queue<Integer> queue = new ArrayDeque<>();
     		queue.add(beginIdx);
     		visited[beginIdx] = true;
-    		boolean lastMarked = true;
     		
     		while(!queue.isEmpty()) {
     			Integer idx = queue.poll();
@@ -212,10 +211,6 @@ public class FunctionalGroupsFinder {
     				fGroupIndices.add(idx);
     				// also scratch the index from markedAtoms
     				markedAtoms.remove(idx);
-    				// make note that we had a marked atom
-    				if(!lastMarked) lastMarked = true;
-    				
-    				System.out.println("SET LASTMARKED: : "+ lastMarked);
     				
     				// and take look at the connected atoms
     				for(int connectedIdx : adjList[idx]) {
@@ -226,7 +221,7 @@ public class FunctionalGroupsFinder {
     				}
     			}
     			// if we find a C and the atom we came from was marked (= environmental C)...
-    			else if(lastMarked && molecule.getAtom(idx).getAtomicNumber() == 6) {
+    			else if(molecule.getAtom(idx).getAtomicNumber() == 6) {
     				
     				System.out.println("VISITED ENVIRONMENTAL C ATOM: "+ molecule.getAtom(idx).getSymbol() + idx);
     				
@@ -236,11 +231,7 @@ public class FunctionalGroupsFinder {
     				if(mode != Mode.NO_GENERALIZATION) {
     					molecule.getAtom(idx).setProperty(ENVIRONMENTAL_C_FLAG, true);
     				}
-    				// make note that this was not a marked atom
-    				if(lastMarked) lastMarked = false;
     				// end here and do not look at connected atoms
-    				
-    				System.out.println("SET LASTMARKED: : "+ lastMarked);
     			}
     			else {
     				System.out.println("VISITED NON_MARKED ATOM: "+ molecule.getAtom(idx).getSymbol() + idx);
