@@ -13,7 +13,6 @@ import java.util.Queue;
 
 import org.openscience.cdk.Atom;
 import org.openscience.cdk.PseudoAtom;
-import org.openscience.cdk.exception.CDKException;
 import org.openscience.cdk.graph.GraphUtil;
 import org.openscience.cdk.graph.GraphUtil.EdgeToBondMap;
 import org.openscience.cdk.interfaces.IAtom;
@@ -50,11 +49,6 @@ public class FunctionalGroupsFinder {
 	private final static String ENVIRONMENTAL_C_FLAG = "ENVIRONMENTAL_C"; 
     
     /**
-     * Default initial capacity of the list that takes the functional groups
-     */
-    private final static int DEFAULT_INITIAL_OUTPUT_CAPACITY = 8;
-    
-    /**
      * Initial size of the collections containing each functional group. 
      */
     private final static int FUNCTIONAL_GROUP_INITIAL_CAPACITY = 15;
@@ -66,10 +60,10 @@ public class FunctionalGroupsFinder {
     private HashSet<Integer>	markedAtoms;
     
     public FunctionalGroupsFinder() {
-    	this(Mode.DEFAULT, DEFAULT_INITIAL_OUTPUT_CAPACITY);
+    	this(Mode.DEFAULT);
     }
     
-    public FunctionalGroupsFinder(Mode mode, int initialOutputCapacity) {
+    public FunctionalGroupsFinder(Mode mode) {
     	this.mode = mode;
     }
     
@@ -300,7 +294,7 @@ public class FunctionalGroupsFinder {
      *				option 2: introduce inner class functionalGroup that stores an AC plus the HashSet.
      *			*	is it faster to do pattern matching? see class Pattern & VentoFoggia
      */
-    public List<IAtomContainer> generalizeEnvironments(List<IAtomContainer> fGroups) throws CDKException {
+    public List<IAtomContainer> generalizeEnvironments(List<IAtomContainer> fGroups){
     	fGroupLoop:
     	for(IAtomContainer fGroup : fGroups) {
     		System.out.println("***GENERALIZING FGROUP*****************************************************"); // FIXME debug only

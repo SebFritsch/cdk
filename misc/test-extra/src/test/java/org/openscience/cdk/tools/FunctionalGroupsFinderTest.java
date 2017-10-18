@@ -126,11 +126,7 @@ public class FunctionalGroupsFinderTest extends CDKTestCase {
 		System.out.println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
 
 		
-		try {
-			fGs = gF.generalizeEnvironments(fGs);
-		} catch (CDKException e) {
-			Assert.assertFalse(true);
-		}
+		fGs = gF.generalizeEnvironments(fGs);
 		
 		System.out.println("GENERALIZED FUNCTIONAL GROUPS:");
 		stringWriter = new StringWriter();
