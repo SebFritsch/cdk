@@ -79,8 +79,8 @@ public class FunctionalGroupsFinderTest extends CDKTestCase {
     	SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         IAtomContainer mol = new AtomContainer();
 		try {
-			//mol = smiPar.parseSmiles("NC(O)C\\C=C\\CC(=O)C1CO1");
-			mol = smiPar.parseSmiles("CC(=O)N[C@@H]1[C@@H](NC(=N)N)C=C(O[C@H]1[C@H](O)[C@H](O)CO)C(=O)O");
+			mol = smiPar.parseSmiles("NC(O)C\\C=C\\CC(=O)C1CO1");
+			//mol = smiPar.parseSmiles("CC(=O)N[C@@H]1[C@@H](NC(=N)N)C=C(O[C@H]1[C@H](O)[C@H](O)CO)C(=O)O");
 			
 			addExplicitHydrogens(mol);
 		} catch (Exception e) {
@@ -99,6 +99,8 @@ public class FunctionalGroupsFinderTest extends CDKTestCase {
 		} catch (CloneNotSupportedException e1) {
 			Assert.assertFalse(true);
 		}
+		gF.markAtoms(mol);
+		
 		List<IAtomContainer> fGs = new ArrayList<>();
 		try {
 			fGs = gF.extractGroups(mol);
