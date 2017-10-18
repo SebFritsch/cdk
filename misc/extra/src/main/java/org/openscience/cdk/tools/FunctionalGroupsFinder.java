@@ -64,7 +64,6 @@ public class FunctionalGroupsFinder {
     private EdgeToBondMap 		bondMap;
     private int[][] 			adjList;
     private HashSet<Integer>	markedAtoms;
-    //private List<Integer>		unmarkedCAtoms;
     
     public FunctionalGroupsFinder() {
     	this(Mode.DEFAULT, DEFAULT_INITIAL_OUTPUT_CAPACITY);
@@ -125,13 +124,13 @@ public class FunctionalGroupsFinder {
     				// if connected to Heteroatom or C in aliphatic double or triple bond... [CONDITIONS 2.1 & 2.2]
     				if(connectedAtom.getAtomicNumber() != 1 
     						&& ((connectedBond.getOrder() == Order.DOUBLE || connectedBond.getOrder() == Order.TRIPLE)
-    						&& connectedBond.isAromatic() == false)) {
+    						&& !connectedBond.isAromatic())) {
     					// set as marked and break out of connected atoms
     					debugAtomConditionMap.put(idx, "Condition 2.1/2.2");		// FIXME debug only!
     					isMarked = true;
     					break;
     				}
-    				// if connected to O/N/S in single bond... (FIXME: & aliphatic?!)
+    				// if connected to O/N/S in single bond...
     				else if((connectedAtom.getAtomicNumber() == 7 
     						|| connectedAtom.getAtomicNumber() == 8
     						|| connectedAtom.getAtomicNumber() == 16)
@@ -155,7 +154,7 @@ public class FunctionalGroupsFinder {
     								if(connectedInSphere3Atom.equals(cAtom)) {
     									// set as marked and break out of connected atoms
     									debugAtomConditionMap.put(idx, "Condition 2.4");		// FIXME debug only!
-    									isMarked = true;
+    									isMarked = true; 
     									break;
     								}
     							}
@@ -182,7 +181,7 @@ public class FunctionalGroupsFinder {
     			}
     			continue;
     		}
-    		// if Hereroatom... (CONDITION 1)
+    		// if heteroatom... (CONDITION 1)
     		else {
     			debugAtomConditionMap.put(idx, "Condition 1");		// FIXME debug only!
     			markedAtoms.add(idx);
@@ -205,7 +204,7 @@ public class FunctionalGroupsFinder {
      * NOTE:	*	returns groups with implicit hydrogens!
      */
     public List<IAtomContainer> extractGroups(IAtomContainer molecule) throws CloneNotSupportedException{
-    	List<IAtomContainer> functionalGroups = new ArrayList<>(initialOutputCapacity);
+    	List<IAtomContainer> functionalGroups = new ArrayList<>(initialOutputCapacity); //TODO: LinkedList?
     	
     	while(!markedAtoms.isEmpty()) {
     		// get next markedAtom as the starting node for the search 
@@ -283,7 +282,7 @@ public class FunctionalGroupsFinder {
     		
     		System.out.println("EXtracting.... indices: "+Arrays.toString(fGroupIndicesArray));
     		
-    		// create ID
+    		// create IDs for the group
     		IDCreator.createIDs(fGroup);
     		
     		// add functional group to list
@@ -332,11 +331,9 @@ public class FunctionalGroupsFinder {
     			byte bondOrderSum = 0;
     			for(IBond bond : fGroup.bonds()) {
     				// check for C=O double bond
-    				if(bond.getOrder() == Order.DOUBLE) {
-    					if(bond.getBegin().getAtomicNumber() + bond.getEnd().getAtomicNumber() == 14) {
-    						isAldehydeOrKetone = true; // aldehyde or ketone
-    						break;
-    					}
+    				if(bond.getOrder() == Order.DOUBLE && bond.getBegin().getAtomicNumber() + bond.getEnd().getAtomicNumber() == 14) {
+    					isAldehydeOrKetone = true; // aldehyde or ketone
+    					break;
     				}
     				bondOrderSum += bond.getOrder().numeric();
     			}
@@ -368,14 +365,15 @@ public class FunctionalGroupsFinder {
     		}
     		for(IAtom atom : fGroup.atoms()) {
     			if(atom.getAtomicNumber() == 6) {
-    				// STEP 1
+    				// STEP 1: delete environments on carbons... see exceptions!
     				EnvironmentalCType type = atom.getProperty(ENVIRONMENTAL_C_FLAG);
     				if(type == EnvironmentalCType.C_ON_C && !isAldehydeOrKetone) {
     					System.out.println("Removing env. C (on C)..."); // FIXME debug only
     					fGroup.removeAtom(atom);
     					continue;
     				}
-    				// STEP 3
+    				// STEP 3: replace other environmental C's by R-Atoms (represent H or C)... see exceptions!
+    				// TODO: double check exception for carbonyls!
     				else if(type == EnvironmentalCType.C_ON_HETEROATOM && !isSingleN && !isSingleO) {
     					IPseudoAtom rAtom = new PseudoAtom("R");
     					rAtom.setAttachPointNum(1);
@@ -383,7 +381,7 @@ public class FunctionalGroupsFinder {
     					System.out.println("Replacing env. C (on heteroatom) by R-Atom..."); // FIXME debug only
     				}
     			}
-    			// STEP 2
+    			// STEP 2: fill free valences on heteroatoms by R-Atoms... see exceptions!
     			else if(isHeteroatom(atom)){
     				if(atom.getImplicitHydrogenCount() != null) {
     					int rAtomsToAdd = atom.getImplicitHydrogenCount();
@@ -408,7 +406,6 @@ public class FunctionalGroupsFinder {
     }
 
     private static final boolean isHeteroatom(IAtom atom) {
-    	// TODO does this make any difference to calling getAtomicNumber() each time?
     	int atomicNr = atom.getAtomicNumber();
     	return atomicNr != 1 && atomicNr != 6;
     }
