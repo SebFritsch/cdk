@@ -59,14 +59,29 @@ public class FunctionalGroupsFinder {
     private int[][] 			adjList;
     private HashSet<Integer>	markedAtoms;
     
+    /**
+     * Default constructor for FunctionalGroupsFinder.
+     */
     public FunctionalGroupsFinder() {
     	this(Mode.DEFAULT);
     }
     
+    /**
+     * Constructor for FunctionalGroupsFinder.
+     * 
+     * @param mode working mode (see {@code FunctionalGroupsFinder.Mode}).
+     */
     public FunctionalGroupsFinder(Mode mode) {
     	this.mode = mode;
     }
     
+    /**
+     * Find all functional groups contained in a molecule.
+     * 
+     * @param molecule the molecule which contains the functional groups
+     * @return a list with all functional groups found in the molecule.
+     * @throws CloneNotSupportedException an exception thrown if the molecule cannot be cloned
+     */
     public  List<IAtomContainer> find(IAtomContainer molecule) throws CloneNotSupportedException{
     	// init GraphUtil+EdgeToBondMap
     	bondMap = EdgeToBondMap.withSpaceFor(molecule);
@@ -91,6 +106,19 @@ public class FunctionalGroupsFinder {
      *			*	check if it is worth it to mark connected Atoms (Hetero, C=C, C≡C, 3-rings) right away and check if 
      * 				atom has already been marked at the beginning of the loop (HashSet<Integer idx>.contains)
      *			*	is is better to mark atoms by setting a property instead of using an external HashSet?
+     */
+    /**
+     * Mark all atoms according to the conditions below and store them in a set for further processing.
+     * 
+     * 	1. mark all heteroatoms in a molecule, including halogens
+     * 	2. mark also the following carbon atoms:
+     * 		• atoms connected by non-aromatic double or triple bond to any heteroatom
+     * 		• atoms in nonaromatic carbon–carbon double or triple bonds
+     * 		• acetal carbons, i.e. sp3 carbons connected to two or more oxygens, nitrogens or sulfurs; these O, N or S atoms must have only single bonds
+     *		• all atoms in oxirane, aziridine and thiirane rings (such rings are traditionally considered to be functional groups due to their high reactivity)
+     * TODO: add citation!
+     * 
+     * @param molecule molecule with atoms to mark
      */
     public void markAtoms(IAtomContainer molecule) {
     	// TODO: FOR DEBUGGING ONLY!
@@ -196,6 +224,15 @@ public class FunctionalGroupsFinder {
      *			* 	DFS should be more memory efficient than BFS
      * NOTE:	*	returns groups with implicit hydrogens!
      */
+    /**
+     * Searches the molecule for groups of connected marked atoms and extracts each as a new functional group.
+     * The extraction includes connected unmarked carbon atoms that are not part of the functional group
+     * but form its "environment".
+     * 
+     * @param molecule the molecule which contains the functional groups
+     * @return a list of all functional groups (including "environments") extracted from the molecule
+     * @throws CloneNotSupportedException an exception thrown if the molecule cannot be cloned
+     */
     public List<IAtomContainer> extractGroups(IAtomContainer molecule) throws CloneNotSupportedException{
     	List<IAtomContainer> functionalGroups = new LinkedList<>();
     	
@@ -293,6 +330,13 @@ public class FunctionalGroupsFinder {
      *				option 1: store all of them (across all FGs) in a list of Hashmaps (idx - type)
      *				option 2: introduce inner class functionalGroup that stores an AC plus the HashSet.
      *			*	is it faster to do pattern matching? see class Pattern & VentoFoggia
+     */
+    /**
+     * Generalizes the full environments of functional groups, providing a good balance between preserving 
+     * meaningful detail and generalization.
+     * 
+     * @param fGroups the list of functional groups including full "environments"
+     * @return a list of the same functional groups with generalized "environments"
      */
     public List<IAtomContainer> generalizeEnvironments(List<IAtomContainer> fGroups){
     	fGroupLoop:
@@ -397,13 +441,25 @@ public class FunctionalGroupsFinder {
     
     	return fGroups;
     }
-
+    
+    /**
+     * Returns true if an atom is a heteroatom (not hydrogen or carbon).
+     * 
+     * @param atom atom to check
+     * @return true if it is a heteroatom
+     */
     private static final boolean isHeteroatom(IAtom atom) {
     	int atomicNr = atom.getAtomicNumber();
     	return atomicNr != 1 && atomicNr != 6;
     }
     
     // TODO: optimize?
+    /**
+     * Converts implicit hydrogens to explicit for a single atom in a molecule.
+     * 
+     * @param molecule molecule in which the conversion should happen
+     * @param atom atom with implicit hydrogens that should be converted
+     */
     private static void restoreExplicitHydrogens(IAtomContainer molecule, IAtom atom) {
     	int formerAtomCount = molecule.getAtomCount();
     	for(int i = 0; i < atom.getImplicitHydrogenCount(); i++) {
