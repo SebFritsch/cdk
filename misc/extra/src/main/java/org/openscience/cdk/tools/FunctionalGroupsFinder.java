@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
@@ -59,7 +60,6 @@ public class FunctionalGroupsFinder {
     private final static int FUNCTIONAL_GROUP_INITIAL_CAPACITY = 15;
     
     private final Mode 		mode; 
-    private final int		initialOutputCapacity;
     
     private EdgeToBondMap 		bondMap;
     private int[][] 			adjList;
@@ -71,7 +71,6 @@ public class FunctionalGroupsFinder {
     
     public FunctionalGroupsFinder(Mode mode, int initialOutputCapacity) {
     	this.mode = mode;
-    	this.initialOutputCapacity = initialOutputCapacity;
     }
     
     public  List<IAtomContainer> find(IAtomContainer molecule) throws CloneNotSupportedException{
@@ -88,7 +87,7 @@ public class FunctionalGroupsFinder {
 //    	if generalization is wanted do it
     	
     	//FIXME replace!
-    	return new ArrayList<IAtomContainer>(initialOutputCapacity);
+    	return new LinkedList<IAtomContainer>();
     }
 
     /**
@@ -204,7 +203,7 @@ public class FunctionalGroupsFinder {
      * NOTE:	*	returns groups with implicit hydrogens!
      */
     public List<IAtomContainer> extractGroups(IAtomContainer molecule) throws CloneNotSupportedException{
-    	List<IAtomContainer> functionalGroups = new ArrayList<>(initialOutputCapacity); //TODO: LinkedList?
+    	List<IAtomContainer> functionalGroups = new LinkedList<>();
     	
     	while(!markedAtoms.isEmpty()) {
     		// get next markedAtom as the starting node for the search 
