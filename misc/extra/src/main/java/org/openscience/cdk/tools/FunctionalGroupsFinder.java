@@ -24,6 +24,8 @@ import org.openscience.cdk.tools.manipulator.AtomContainerManipulator;
 
 //TODO class info goes here
 public class FunctionalGroupsFinder {
+	private static ILoggingTool log = LoggingToolFactory.createLoggingTool(FunctionalGroupsFinder.class);
+	
 	/**
 	 * Defines the working mode.
 	 */
@@ -73,6 +75,11 @@ public class FunctionalGroupsFinder {
      */
     public FunctionalGroupsFinder(Mode mode) {
     	this.mode = mode;
+    	
+    	//TODO debug only! remove!
+    	System.setProperty("cdk.debugging", "true");
+    	System.setProperty("cdk.debug.stdout", "true");
+    	log = LoggingToolFactory.createLoggingTool(FunctionalGroupsFinder.class);
     }
     
     /**
@@ -121,6 +128,7 @@ public class FunctionalGroupsFinder {
      * @param molecule molecule with atoms to mark
      */
     public void markAtoms(IAtomContainer molecule) {
+    	log.debug("########## Starting search for atoms to mark ... ##########");
     	// TODO: FOR DEBUGGING ONLY!
     	// stores which condition in the algorithm got the atom(index) marked
     	Map<Integer, String> debugAtomConditionMap = new HashMap<>(molecule.getAtomCount());
@@ -147,6 +155,7 @@ public class FunctionalGroupsFinder {
     						&& ((connectedBond.getOrder() == Order.DOUBLE || connectedBond.getOrder() == Order.TRIPLE)
     						&& !connectedBond.isAromatic())) {
     					// set as marked and break out of connected atoms
+    					log.debug(String.format("Marking Atom #%d (%s) - Met condition 2.1/2.2", idx, cAtom.getSymbol())); 
     					debugAtomConditionMap.put(idx, "Condition 2.1/2.2");		// FIXME debug only!
     					isMarked = true;
     					break;
@@ -160,6 +169,7 @@ public class FunctionalGroupsFinder {
     					oNSCounter++;
     					if(oNSCounter > 1 && adjList[idx].length == 4) {
     						// set as marked and break out of connected atoms
+    						log.debug(String.format("Marking Atom #%d (%s) - Met condition 2.3", idx, cAtom.getSymbol())); 
     						debugAtomConditionMap.put(idx, "Condition 2.3");		// FIXME debug only!
     						isMarked = true;
     						break;
@@ -174,6 +184,7 @@ public class FunctionalGroupsFinder {
     								IAtom connectedInSphere3Atom = molecule.getAtom(connectedInSphere3Idx);
     								if(connectedInSphere3Atom.equals(cAtom)) {
     									// set as marked and break out of connected atoms
+    									log.debug(String.format("Marking Atom #%d (%s) - Met condition 2.4", idx, cAtom.getSymbol())); 
     									debugAtomConditionMap.put(idx, "Condition 2.4");		// FIXME debug only!
     									isMarked = true; 
     									break;
@@ -204,11 +215,14 @@ public class FunctionalGroupsFinder {
     		}
     		// if heteroatom... (CONDITION 1)
     		else {
+    			log.debug(String.format("Marking Atom #%d (%s) - Met condition 1", idx, cAtom.getSymbol())); 
     			debugAtomConditionMap.put(idx, "Condition 1");		// FIXME debug only!
     			markedAtoms.add(idx);
     			continue;
     		}
     	}
+    	
+    	log.debug(String.format("########## End of search. Marked %d/%d atoms. ##########", markedAtoms.size(), molecule.getAtomCount()));
     	
     	//DEBUG only:
     	printMarkedAtomsDebugInfo(debugAtomConditionMap, molecule);
@@ -234,14 +248,15 @@ public class FunctionalGroupsFinder {
      * @throws CloneNotSupportedException an exception thrown if the molecule cannot be cloned
      */
     public List<IAtomContainer> extractGroups(IAtomContainer molecule) throws CloneNotSupportedException{
-    	List<IAtomContainer> functionalGroups = new LinkedList<>();
+    	log.debug("########## Starting identification & extraction of functional groups... ##########");
     	
+    	List<IAtomContainer> functionalGroups = new LinkedList<>();
     	while(!markedAtoms.isEmpty()) {
     		// get next markedAtom as the starting node for the search 
     		int beginIdx = markedAtoms.iterator().next();
     		List<Integer> fGroupIndices = new ArrayList<>(FUNCTIONAL_GROUP_INITIAL_CAPACITY);
     		
-    		System.out.println("###### SEARCHING NEW FUNCTIONAL GROUP FROM: "+ molecule.getAtom(beginIdx).getSymbol() + beginIdx); // FIXME debug only
+    		log.debug(String.format("Searching new functional group from atom #%d (%s)...", beginIdx,  molecule.getAtom(beginIdx).getSymbol()));
     		
     		// do a BFS from there
     		boolean[] visited = new boolean[molecule.getAtomCount()];
@@ -268,8 +283,7 @@ public class FunctionalGroupsFinder {
     			
     			// if we find a marked atom ...
     			if(markedAtoms.contains(idx)) {
-    				
-    				System.out.println("VISITED MARKED ATOM: "+ currentAtom.getSymbol() + idx); // FIXME debug only
+    				log.debug(String.format("	visited marked atom: #%d (%s)", idx, currentAtom.getSymbol()));
     				
     				// add its index to the functional group
     				fGroupIndices.add(idx);
@@ -295,22 +309,22 @@ public class FunctionalGroupsFinder {
     				}
     				// end here and do not look at connected atoms
     				
-    				System.out.println("VISITED ENVIRONMENTAL C ATOM: "+ currentAtom.getSymbol() + idx +" connected to C: " + isParentC); // FIXME debug only
+    				log.debug(String.format("	visited env. C atom: #%d (%s), type: %s", idx, currentAtom.getSymbol(), isParentC ? "C_ON_C" : "C_ON_HETEROATOM"));
     			}
     			else {
-    				System.out.println("VISITED NON_MARKED ATOM: "+ currentAtom.getSymbol() + idx); // FIXME debug only
+    				log.debug(String.format("	visited non-marked atom: #%d (%s)", idx, currentAtom.getSymbol()));
     			}
     			
-    			System.out.println("PARENT WAS C: "+ isParentC + "  Reset Counter: " + resetParentCount); // FIXME debug only
+//    			log.debug("PARENT WAS C: "+ isParentC + "  Reset Counter: " + resetParentCount); // FIXME debug only
     		}
-    		System.out.println("###### END OF FUNCTIONAL GROUP");
+    		log.debug("	search completed.");
     		
     		// extract functional group from the collected indices
     		// FIXME: workaround, see todo above! 
     		int[] fGroupIndicesArray = fGroupIndices.stream().mapToInt(i->i).toArray();
     		IAtomContainer fGroup = AtomContainerManipulator.extractSubstructure(molecule, fGroupIndicesArray);
     		
-    		System.out.println("EXtracting.... indices: "+Arrays.toString(fGroupIndicesArray));
+    		log.debug("Extracting functional group by atom indices: ", Arrays.toString(fGroupIndicesArray));
     		
     		// create IDs for the group
     		IDCreator.createIDs(fGroup);
@@ -318,6 +332,7 @@ public class FunctionalGroupsFinder {
     		// add functional group to list
     		functionalGroups.add(fGroup);
     	}
+    	log.debug(String.format("########## Found & extracted %d functional groups. ##########", functionalGroups.size()));
     	
     	return functionalGroups;
     }
@@ -339,13 +354,13 @@ public class FunctionalGroupsFinder {
      * @return a list of the same functional groups with generalized "environments"
      */
     public List<IAtomContainer> generalizeEnvironments(List<IAtomContainer> fGroups){
+    	log.debug("########## Starting generalization of functional groups... ##########");
+    	
     	fGroupLoop:
     	for(IAtomContainer fGroup : fGroups) {
-    		System.out.println("***GENERALIZING FGROUP*****************************************************"); // FIXME debug only
-    		
     		int atomCount = fGroup.getAtomCount();
     		
-    		System.out.println("#atoms: "+atomCount); // FIXME debug only
+    		log.debug(String.format("Generalizing functional group (%d atoms)...", atomCount));
     		
     		// PRECHECKING FOR EXCEPTION CASES
     		boolean isAldehydeOrKetone = false, isSingleO = false, isSecAmineOrSimpleThiol = false, isSingleN = false;
@@ -385,9 +400,9 @@ public class FunctionalGroupsFinder {
     				}
     			}
     		}
-    		
-    		System.out.println("PRECHECK (isSingleO, isSingleN, isSecAmineOrSimpleThiol, isAldehydeOrKetone): "
-    				+ isSingleO + "," + isSingleN + "," + isSecAmineOrSimpleThiol + "," + isAldehydeOrKetone); // FIXME debug only
+    		log.debug(String.format("	precheck result: 	isSingleO: %b, isSingleN: %b, isSecAmineOrSimpleThiol: %b, isAldehydeOrKetone: %b",
+    				isSingleO, isSingleN, isSecAmineOrSimpleThiol, isAldehydeOrKetone));
+
     		
     		// PROCESSING
     		if(isSingleN || isSingleO || isSecAmineOrSimpleThiol) {
@@ -405,7 +420,7 @@ public class FunctionalGroupsFinder {
     				// STEP 1: delete environments on carbons... see exceptions!
     				EnvironmentalCType type = atom.getProperty(ENVIRONMENTAL_C_FLAG);
     				if(type == EnvironmentalCType.C_ON_C && !isAldehydeOrKetone) {
-    					System.out.println("Removing env. C (on C)..."); // FIXME debug only
+    					log.debug("	removing env. C (type C_ON_C)...");
     					fGroup.removeAtom(atom);
     					continue;
     				}
@@ -415,7 +430,7 @@ public class FunctionalGroupsFinder {
     					IPseudoAtom rAtom = new PseudoAtom("R");
     					rAtom.setAttachPointNum(1);
     					AtomContainerManipulator.replaceAtomByAtom(fGroup, atom, rAtom);
-    					System.out.println("Replacing env. C (on heteroatom) by R-Atom..."); // FIXME debug only
+    					log.debug("	replacing env. C (type C_ON_HETEROATOM) by R-atom...");
     				}
     			}
     			// STEP 2: fill free valences on heteroatoms by R-Atoms... see exceptions!
@@ -430,14 +445,13 @@ public class FunctionalGroupsFinder {
     						bond.setOrder(Order.SINGLE); // TODO: necessary?
     						fGroup.addAtom(rAtom);
     						fGroup.addBond(bond);
-    						System.out.println("Filling Valence on Heteroatom with R-Atom..."); // FIXME debug only
+    						log.debug("	filling valence on heteroatom with R-atom...");
     					}
     				}
     			}
     		}
     	}
-    	
-    	System.out.println("***************************************************************************");
+    	log.debug("########## Generalization of functional groups completed. ##########");
     
     	return fGroups;
     }
