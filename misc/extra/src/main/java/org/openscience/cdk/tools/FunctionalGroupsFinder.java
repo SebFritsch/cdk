@@ -129,9 +129,6 @@ public class FunctionalGroupsFinder {
      */
     public void markAtoms(IAtomContainer molecule) {
     	log.debug("########## Starting search for atoms to mark ... ##########");
-    	// TODO: FOR DEBUGGING ONLY!
-    	// stores which condition in the algorithm got the atom(index) marked
-    	Map<Integer, String> debugAtomConditionMap = new HashMap<>(molecule.getAtomCount());
     	
     	// store marked atoms
     	markedAtoms = new HashSet<>(molecule.getAtomCount());	// TODO: initial capacity!
@@ -156,7 +153,6 @@ public class FunctionalGroupsFinder {
     						&& !connectedBond.isAromatic())) {
     					// set as marked and break out of connected atoms
     					log.debug(String.format("Marking Atom #%d (%s) - Met condition 2.1/2.2", idx, cAtom.getSymbol())); 
-    					debugAtomConditionMap.put(idx, "Condition 2.1/2.2");		// FIXME debug only!
     					isMarked = true;
     					break;
     				}
@@ -170,7 +166,6 @@ public class FunctionalGroupsFinder {
     					if(oNSCounter > 1 && adjList[idx].length == 4) {
     						// set as marked and break out of connected atoms
     						log.debug(String.format("Marking Atom #%d (%s) - Met condition 2.3", idx, cAtom.getSymbol())); 
-    						debugAtomConditionMap.put(idx, "Condition 2.3");		// FIXME debug only!
     						isMarked = true;
     						break;
     					}
@@ -185,7 +180,6 @@ public class FunctionalGroupsFinder {
     								if(connectedInSphere3Atom.equals(cAtom)) {
     									// set as marked and break out of connected atoms
     									log.debug(String.format("Marking Atom #%d (%s) - Met condition 2.4", idx, cAtom.getSymbol())); 
-    									debugAtomConditionMap.put(idx, "Condition 2.4");		// FIXME debug only!
     									isMarked = true; 
     									break;
     								}
@@ -216,16 +210,11 @@ public class FunctionalGroupsFinder {
     		// if heteroatom... (CONDITION 1)
     		else {
     			log.debug(String.format("Marking Atom #%d (%s) - Met condition 1", idx, cAtom.getSymbol())); 
-    			debugAtomConditionMap.put(idx, "Condition 1");		// FIXME debug only!
     			markedAtoms.add(idx);
     			continue;
     		}
     	}
-    	
     	log.debug(String.format("########## End of search. Marked %d/%d atoms. ##########", markedAtoms.size(), molecule.getAtomCount()));
-    	
-    	//DEBUG only:
-    	printMarkedAtomsDebugInfo(debugAtomConditionMap, molecule);
     }
     
     /**
@@ -486,14 +475,5 @@ public class FunctionalGroupsFinder {
     	}
     	System.out.println("Added "+ (molecule.getAtomCount()-formerAtomCount) +" atoms to "+atom.getSymbol()+molecule.indexOf(atom)); // FIXME debug only
     	atom.setImplicitHydrogenCount(0);
-    }
-    
-    // FOR DEBUGGING ONLY!
-    public static void printMarkedAtomsDebugInfo(Map<Integer, String> debugAtomConditionMap, IAtomContainer mol) {
-    	System.out.println("################# ATOM CONDITION DATA ###################");
-    	for(Map.Entry<Integer, String> e : debugAtomConditionMap.entrySet()) {
-    		System.out.printf("#%d:%s   %s%n", e.getKey(), mol.getAtom(e.getKey()).getSymbol(), e.getValue());
-    	}
-    	System.out.println("##########################################################");
     }
 }

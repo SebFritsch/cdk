@@ -48,33 +48,6 @@ public class FunctionalGroupsFinderTest extends CDKTestCase {
     }
     
     @Test
-    public void testDebugConditionMap() {
-    	SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
-        IAtomContainer mol = new AtomContainer();
-		try {
-			mol = smiPar.parseSmiles("NC(O)C\\C=C\\CC(=O)C1CO1");
-			addExplicitHydrogens(mol);
-		} catch (Exception e) {
-			Assert.assertFalse(true);
-		}
-		try {
-			AtomContainerManipulator.percieveAtomTypesAndConfigureAtoms(mol);
-			Aromaticity.cdkLegacy().apply(mol);
-		} catch (Exception e) {
-			Assert.assertFalse(true);
-		}
-		
-		FunctionalGroupsFinder gF = new FunctionalGroupsFinder();
-		try {
-			gF.find(mol);
-		} catch (CloneNotSupportedException e) {
-			Assert.assertFalse(true);
-		}
-		
-		printToConsoleWithIndices(mol);
-    }
-    
-    @Test
     public void testExtractGroups() {
     	SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         IAtomContainer mol = new AtomContainer();
