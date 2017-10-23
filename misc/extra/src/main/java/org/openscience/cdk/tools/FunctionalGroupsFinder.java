@@ -360,11 +360,11 @@ public class FunctionalGroupsFinder {
     				int atomicNumberSum = bond.getBegin().getAtomicNumber() + bond.getEnd().getAtomicNumber();
     				switch(atomicNumberSum) {
     				case 13: 	isSingleN = true; // C-N
-    				continue;
+    				break;
     				case 14:	isSingleO = true; // C-O
-    				continue;
+    				break;
     				case 22:	isSecAmineOrSimpleThiol = true; // C-S
-    				continue;
+    				break;
     				}
     			}
     		}
