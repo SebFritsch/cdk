@@ -399,7 +399,7 @@ public class FunctionalGroupsFinder {
     				if(atom.getAtomicNumber() != 6) {
     					restoreExplicitHydrogens(fGroup, atom);
     					if(!isSecAmineOrSimpleThiol) {
-    						break fGroupLoop; // break because we want to keep the C's in C-OH & C-NH2
+    						continue fGroupLoop; // continue because we want to keep the C's in C-OH & C-NH2
     					}
     				}
     			}
