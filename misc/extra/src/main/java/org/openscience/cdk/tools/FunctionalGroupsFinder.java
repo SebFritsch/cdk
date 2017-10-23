@@ -470,10 +470,10 @@ public class FunctionalGroupsFinder {
     		IBond bond = atom.getBuilder().newBond();
     		bond.setAtoms(new IAtom[]{hydrogen, atom});
     		bond.setOrder(Order.SINGLE); // TODO: necessary?
-    		molecule.addAtom(atom);
+    		molecule.addAtom(hydrogen);
     		molecule.addBond(bond);
     	}
-    	System.out.println("Added "+ (molecule.getAtomCount()-formerAtomCount) +" atoms to "+atom.getSymbol()+molecule.indexOf(atom)); // FIXME debug only
+    	log.debug("	restored "+ (molecule.getAtomCount()-formerAtomCount) +" explicit hydrogens at "+atom.getSymbol()+molecule.indexOf(atom)); // FIXME debug only
     	atom.setImplicitHydrogenCount(0);
     }
 }
