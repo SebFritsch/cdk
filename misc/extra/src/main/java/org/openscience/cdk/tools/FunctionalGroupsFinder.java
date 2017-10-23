@@ -360,11 +360,11 @@ public class FunctionalGroupsFinder {
     				int atomicNumberSum = bond.getBegin().getAtomicNumber() + bond.getEnd().getAtomicNumber();
     				switch(atomicNumberSum) {
     				case 13: 	isSingleN = true; // C-N
-    				break;
+    				continue;
     				case 14:	isSingleO = true; // C-O
-    				break;
+    				continue;
     				case 22:	isSecAmineOrSimpleThiol = true; // C-S
-    				break;
+    				continue;
     				}
     			}
     		}
@@ -374,7 +374,7 @@ public class FunctionalGroupsFinder {
     				// check for C=O double bond
     				if(bond.getOrder() == Order.DOUBLE && bond.getBegin().getAtomicNumber() + bond.getEnd().getAtomicNumber() == 14) {
     					isAldehydeOrKetone = true; // aldehyde or ketone
-    					break;
+    					continue;
     				}
     				bondOrderSum += bond.getOrder().numeric();
     			}
