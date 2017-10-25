@@ -259,16 +259,18 @@ public class FunctionalGroupsFinder {
     			Integer idx = queue.poll();
     			IAtom currentAtom = molecule.getAtom(idx);
     			
-    			if(mode != Mode.NO_GENERALIZATION) {
-    				// handle identification of whether or not the current parent is a C
-    				if(resetParentCount == 0) {
-    					isParentC = currentAtom.getAtomicNumber() == 6;
-    					resetParentCount = adjList[idx].length;
-    				}
-    				else {
-    					resetParentCount--;
-    				}
-    			}
+//    			if(mode != Mode.NO_GENERALIZATION) {
+//    				// handle identification of whether or not the current parent is a C
+//    				if(resetParentCount < 2) {
+//    					isParentC = currentAtom.getAtomicNumber() == 6;
+//    					resetParentCount = adjList[idx].length;
+//    					log.debug("		resetParentCount elapsed. Checking atom for C: " + currentAtom.getSymbol() + idx + " -> " + isParentC + ". New resetParentCount: " + resetParentCount); // FIXME debug only
+//    				}
+//    				else {
+//    					resetParentCount--;
+//    					log.debug("		resetParentCount: " + resetParentCount + "(isParentC: " + isParentC + ")"); // FIXME debug only
+//    				}
+//    			}
     			
     			// if we find a marked atom ...
     			if(markedAtoms.contains(idx)) {
@@ -304,7 +306,18 @@ public class FunctionalGroupsFinder {
     				log.debug(String.format("	visited non-marked atom: #%d (%s)", idx, currentAtom.getSymbol()));
     			}
     			
-//    			log.debug("PARENT WAS C: "+ isParentC + "  Reset Counter: " + resetParentCount); // FIXME debug only
+    			if(mode != Mode.NO_GENERALIZATION) {
+    				// handle identification of whether or not the current parent is a C
+    				if(resetParentCount < 2) {
+    					isParentC = currentAtom.getAtomicNumber() == 6;
+    					resetParentCount = adjList[idx].length;
+//    					log.debug("		resetParentCount elapsed. Checking atom for C: " + currentAtom.getSymbol() + idx + " -> " + isParentC + ". New resetParentCount: " + resetParentCount); // FIXME debug only
+    				}
+    				else {
+    					resetParentCount--;
+//    					log.debug("		resetParentCount: " + resetParentCount + "(isParentC: " + isParentC + ")"); // FIXME debug only
+    				}
+    			}
     		}
     		log.debug("	search completed.");
     		
