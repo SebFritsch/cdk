@@ -75,11 +75,6 @@ public class FunctionalGroupsFinder {
      */
     public FunctionalGroupsFinder(Mode mode) {
     	this.mode = mode;
-    	
-    	//TODO debug only! remove!
-    	System.setProperty("cdk.debugging", "true");
-    	System.setProperty("cdk.debug.stdout", "true");
-    	log = LoggingToolFactory.createLoggingTool(FunctionalGroupsFinder.class);
     }
     
     /**
