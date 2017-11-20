@@ -220,6 +220,7 @@ public class FunctionalGroupsFinder {
      * TODO / NOTES
      * 
      * TODO:	*	change public -> private
+     * 			* 	find a better solution for parent-C-check?
      *			*	Environmental C's & type could better be stored in HashMap instead of atom's property!
      *			*	AtomContainerManipulator.extractSubstructure(IAtomContainer atomContainer, int... atomIndices)
      *				vs. cloning mol., deleting bonds/atoms & using ConnectivityChecker.partitionIntoMolecules(disconnectedContainer) ?
@@ -251,12 +252,19 @@ public class FunctionalGroupsFinder {
     		Queue<Integer> queue = new ArrayDeque<>();
     		queue.add(beginIdx);
     		visited[beginIdx] = true;
-    		boolean isParentC = false; // value does not matter, will be reset anyway
-    		int resetParentCount = 0;
+    		
+    		// stores if the "parent" atom (atom we are coming from) is a carbon or not
+    		Queue<Boolean> isParentCQueue = new ArrayDeque<>();
+    		isParentCQueue.add(molecule.getAtom(beginIdx).getAtomicNumber() == 6);
     		
     		while(!queue.isEmpty()) {
     			Integer idx = queue.poll();
     			IAtom currentAtom = molecule.getAtom(idx);
+    			
+    			boolean isParentC = false;
+    			if(mode != Mode.NO_GENERALIZATION) {
+    				isParentC = isParentCQueue.poll();
+    			}
     			
     			// if we find a marked atom ...
     			if(markedAtoms.contains(idx)) {
@@ -271,6 +279,9 @@ public class FunctionalGroupsFinder {
     				for(int connectedIdx : adjList[idx]) {
     					if(!visited[connectedIdx]) {
     						queue.add(connectedIdx);
+    						if(mode != Mode.NO_GENERALIZATION) {
+    							isParentCQueue.add(currentAtom.getAtomicNumber() == 6);
+    						}
     						visited[connectedIdx] = true;
     					}
     				}
@@ -290,19 +301,6 @@ public class FunctionalGroupsFinder {
     			}
     			else {
     				log.debug(String.format("	visited non-marked atom: #%d (%s)", idx, currentAtom.getSymbol()));
-    			}
-    			
-    			if(mode != Mode.NO_GENERALIZATION) {
-    				// handle identification of whether or not the current parent is a C
-    				if(resetParentCount < 2) {
-    					isParentC = currentAtom.getAtomicNumber() == 6;
-    					resetParentCount = adjList[idx].length;
-//    					log.debug("		resetParentCount elapsed. Checking atom for C: " + currentAtom.getSymbol() + idx + " -> " + isParentC + ". New resetParentCount: " + resetParentCount); // FIXME debug only
-    				}
-    				else {
-    					resetParentCount--;
-//    					log.debug("		resetParentCount: " + resetParentCount + "(isParentC: " + isParentC + ")"); // FIXME debug only
-    				}
     			}
     		}
     		log.debug("	search completed.");

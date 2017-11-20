@@ -130,8 +130,7 @@ public class FunctionalGroupsFinderTest extends CDKTestCase {
     	String[] expectedFGs = new String[] {"[R]N([R])C(=O)[R]", "R-:N-:N-:R", "R-:S-:R", "[R]S(=O)(=O)N([R])[R]"};
     	testFind(moleculeSmiles, expectedFGs);
 	}
-	
-	//FIXME:	Group 1: Bond between C_env - C_env !
+
 	@Test
 	public void testFind4() throws Exception {
 		String moleculeSmiles = "NS(=O)(=O)c1cc2c(NCNS2(=O)=O)cc1Cl";
@@ -139,11 +138,10 @@ public class FunctionalGroupsFinderTest extends CDKTestCase {
     	testFind(moleculeSmiles, expectedFGs);
 	}
 	
-	//FIXME:	Group 0: Carbon in =N-C gets classified as C_ON_C (thus removed in generalization) ! 
 	@Test
 	public void testFind5() throws Exception {
 		String moleculeSmiles = "CNC1=Nc2ccc(Cl)cc2C(=N(=O)C1)c3ccccc3";
-    	String[] expectedFGs = new String[] {"[R]N([R])[C]=N[R]", "Cl-R", "[R]N(=O)=C([R])[R]"};
+    	String[] expectedFGs = new String[] {"[R]N([R])[C]=N[R]", "Cl-R", "[R]N(=O)=[C]"};
     	testFind(moleculeSmiles, expectedFGs);
 	}
 	
@@ -155,7 +153,6 @@ public class FunctionalGroupsFinderTest extends CDKTestCase {
     	testFind(moleculeSmiles, expectedFGs);
 	}
 	
-	//FIXME: Group 2: carbon connected to N gets classified as C_ON_C (thus removed in generalization) !
 	@Test
 	public void testFind7() throws Exception {
 		String moleculeSmiles = "Clc1ccccc1C2=NCC(=O)Nc3ccc(cc23)N(=O)=O";
