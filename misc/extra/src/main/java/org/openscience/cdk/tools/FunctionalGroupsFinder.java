@@ -6,12 +6,14 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 
 import org.openscience.cdk.Atom;
+import org.openscience.cdk.CDKConstants;
 import org.openscience.cdk.PseudoAtom;
 import org.openscience.cdk.graph.GraphUtil;
 import org.openscience.cdk.graph.GraphUtil.EdgeToBondMap;
@@ -158,7 +160,9 @@ public class FunctionalGroupsFinder {
     						&& connectedBond.getOrder() == Order.SINGLE){
     					// if "acetal C" (2+ O/N/S in single bonds connected tp sp3-C)... [CONDITION 2.3]
     					oNSCounter++;
-    					if(oNSCounter > 1 && adjList[idx].length == 4) {
+    					// TODO: check for hybridization = sp3 instead of counting bonds? Has to be perceived though
+    					// FIXME: getImplicitHydrogenCount can be null / CDKConstants.UNSET for unset Atoms -> check?!
+    					if(oNSCounter > 1 && adjList[idx].length + cAtom.getImplicitHydrogenCount() == 4) {
     						// set as marked and break out of connected atoms
     						log.debug(String.format("Marking Atom #%d (%s) - Met condition 2.3", idx, cAtom.getSymbol())); 
     						isMarked = true;
@@ -254,19 +258,6 @@ public class FunctionalGroupsFinder {
     			Integer idx = queue.poll();
     			IAtom currentAtom = molecule.getAtom(idx);
     			
-//    			if(mode != Mode.NO_GENERALIZATION) {
-//    				// handle identification of whether or not the current parent is a C
-//    				if(resetParentCount < 2) {
-//    					isParentC = currentAtom.getAtomicNumber() == 6;
-//    					resetParentCount = adjList[idx].length;
-//    					log.debug("		resetParentCount elapsed. Checking atom for C: " + currentAtom.getSymbol() + idx + " -> " + isParentC + ". New resetParentCount: " + resetParentCount); // FIXME debug only
-//    				}
-//    				else {
-//    					resetParentCount--;
-//    					log.debug("		resetParentCount: " + resetParentCount + "(isParentC: " + isParentC + ")"); // FIXME debug only
-//    				}
-//    			}
-    			
     			// if we find a marked atom ...
     			if(markedAtoms.contains(idx)) {
     				log.debug(String.format("	visited marked atom: #%d (%s)", idx, currentAtom.getSymbol()));
@@ -319,7 +310,7 @@ public class FunctionalGroupsFinder {
     		// extract functional group from the collected indices
     		// FIXME: workaround, see todo above! 
     		int[] fGroupIndicesArray = fGroupIndices.stream().mapToInt(i->i).toArray();
-    		IAtomContainer fGroup = AtomContainerManipulator.extractSubstructure(molecule, fGroupIndicesArray);
+    		IAtomContainer fGroup = extractGroupByIndices(molecule, fGroupIndicesArray);
     		
     		log.debug("Extracting functional group by atom indices: ", Arrays.toString(fGroupIndicesArray));
     		
@@ -338,6 +329,8 @@ public class FunctionalGroupsFinder {
      * TODO / NOTES
      * 
      * TODO:	*	change to private void!
+     * 			*	TODO: loop with iterator -> no need for extra remove list loop
+     * 			*	FIXME: overhaul detection of env.C's on carbonyl-C's! works but its a quick & dirty fix!
      *			*	ATM: environmental C's are identified by an attached String property-flag
      *				option 1: store all of them (across all FGs) in a list of Hashmaps (idx - type)
      *				option 2: introduce inner class functionalGroup that stores an AC plus the HashSet.
@@ -412,13 +405,34 @@ public class FunctionalGroupsFinder {
     				}
     			}
     		}
+    		List<IAtom> atomsToRemove = new LinkedList<>();
     		for(IAtom atom : fGroup.atoms()) {
     			if(atom.getAtomicNumber() == 6) {
     				// STEP 1: delete environments on carbons... see exceptions!
     				EnvironmentalCType type = atom.getProperty(ENVIRONMENTAL_C_FLAG);
     				if(type == EnvironmentalCType.C_ON_C && !isAldehydeOrKetone) {
-    					log.debug("	removing env. C (type C_ON_C)...");
-    					fGroup.removeAtom(atom);
+    					//FIXME quick & dirty fix
+//    					IAtom connectedC = atom.bonds().iterator().next().getOther(atom);
+    					IAtom connectedC = fGroup.getConnectedBondsList(atom).get(0).getOther(atom);
+    					boolean isCarbonylC = false;
+    					for(IBond bond : fGroup.getConnectedBondsList(connectedC)) {
+    						if(bond.getOrder() == Order.DOUBLE && bond.getBegin().getAtomicNumber() + bond.getEnd().getAtomicNumber() == 14) {
+    							isCarbonylC = true;
+    							break;
+    						}
+    					}
+    					if(!isCarbonylC) {
+    						log.debug("	removing env. C (type C_ON_C)...");
+    						atomsToRemove.add(atom);
+//    						fGroup.removeAtom(atom);
+    						
+    					}
+    					else {
+    						IPseudoAtom rAtom = new PseudoAtom("R");
+        					rAtom.setAttachPointNum(1);
+        					AtomContainerManipulator.replaceAtomByAtom(fGroup, atom, rAtom);
+        					log.debug("	replacing env. C (type C_ON_C, carbonyl-C) by R-atom...");
+    					}
     					continue;
     				}
     				// STEP 3: replace other environmental C's by R-Atoms (represent H or C)... see exceptions!
@@ -447,10 +461,38 @@ public class FunctionalGroupsFinder {
     				}
     			}
     		}
+    		for(IAtom atomToRemove : atomsToRemove) {
+    			fGroup.removeAtom(atomToRemove);
+    		}
     	}
+    	
     	log.debug("########## Generalization of functional groups completed. ##########");
     
     	return fGroups;
+    }
+    
+    /**
+     * Extract a functional group from an atom container, in the form of a new
+     * cloned atom container with only the atoms with indices in atomIndices and
+     * bonds that connect these atoms (except for the bonds between two 
+     * environmental carbons).
+     * 
+     * @param molecule the source container to extract from
+     * @param atomIndices the atom indices of the group
+     * @return a cloned atom container with the group of the source
+     * @throws CloneNotSupportedException if the source container cannot be cloned
+     */
+    public IAtomContainer extractGroupByIndices(IAtomContainer molecule, int... atomIndices) throws CloneNotSupportedException {    	
+    	 IAtomContainer extract = AtomContainerManipulator.extractSubstructure(molecule, atomIndices);
+         // remove all bonds between atoms marked as environmental C's
+    	 for(Iterator<IBond> bondIter = extract.bonds().iterator(); bondIter.hasNext();) {
+    		 IBond bond = bondIter.next();
+    		 if(bond.getBegin().getProperty(ENVIRONMENTAL_C_FLAG) != null
+        			 && bond.getEnd().getProperty(ENVIRONMENTAL_C_FLAG) != null) {
+        		 extract.removeBond(bond);
+        	 }
+    	 }
+         return extract;
     }
     
     /**
@@ -483,5 +525,12 @@ public class FunctionalGroupsFinder {
     	}
     	log.debug("	restored "+ (molecule.getAtomCount()-formerAtomCount) +" explicit hydrogens at "+atom.getSymbol()+molecule.indexOf(atom)); // FIXME debug only
     	atom.setImplicitHydrogenCount(0);
+    }
+    
+    public class RAtom extends PseudoAtom{
+    	public boolean matches(IAtom atom) {
+    		return true;
+    	}
+    	
     }
 }
