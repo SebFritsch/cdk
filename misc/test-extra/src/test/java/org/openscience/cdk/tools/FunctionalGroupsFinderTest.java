@@ -190,7 +190,7 @@ public class FunctionalGroupsFinderTest extends CDKTestCase {
     	testFind(moleculeSmiles, expectedFGs);
 	}
 	
-	//FIXME: sp3-C not marked in paper ?!?!  
+	//TODO: acetal sp3-C not marked in paper ?!?!  
 	@Test
 	public void testFind12() throws Exception {
 		String moleculeSmiles = "OC[C@H]1O[C@H](C[C@@H]1O)n2cnc3[C@H](O)CNC=Nc23";
@@ -202,6 +202,13 @@ public class FunctionalGroupsFinderTest extends CDKTestCase {
 	public void testFind13() throws Exception {
 		String moleculeSmiles = "CCN[C@H]1C[C@H](C)S(=O)(=O)c2sc(cc12)S(=O)(=O)N";
     	String[] expectedFGs = new String[] {"[R]N([R])H", "O=S(=O)([R])[R]", "R-:S-:R", "[R]S(=O)(=O)N([R])[R]"};
+    	testFind(moleculeSmiles, expectedFGs);
+	}
+	
+	@Test
+	public void testFind14() throws Exception {
+		String moleculeSmiles = "C[C@@H](O)[C@@H]1[C@H]2[C@@H](C)C(=C(N2C1=O)C(=O)O)S[C@@H]3CN[C@@H](C3)C(=O)N(C)C";
+    	String[] expectedFGs = new String[] {"[C]O[H]", "O=C([R])N([R])C(C(=O)(O[R]))=[C]S[R]", "[R]N(H)[R]", "[R]N([R])C([R])=O"};
     	testFind(moleculeSmiles, expectedFGs);
 	}
 	
