@@ -212,6 +212,38 @@ public class FunctionalGroupsFinderTest extends CDKTestCase {
     	testFind(moleculeSmiles, expectedFGs);
 	}
 	
+	//TODO carbon in C=O not marked in paper!
+	//TODO carbons in C=C not marked in paper!
+	// thus creates one bigger functional group on the right side where there are 3 in the paper: [R]OC(=O)\C(=C/N([R])[R])\C(=O)[R]
+	@Test
+	public void testFind15() throws Exception {
+		String moleculeSmiles = "C[C@@H]1CN(C[C@H](C)N1)c2c(F)c(N)c3C(=O)C(=CN(C4CC4)c3c2F)C(=O)O";
+    	String[] expectedFGs = new String[] {"", "", "", "", "", ""}; //FIXME: 8 according to paper
+    	testFind(moleculeSmiles, expectedFGs);
+	}
+	
+	//FIXME should the R-atom yield a ring?
+	@Test
+	public void testFind16() throws Exception {
+		String moleculeSmiles = "CC(=CCC1C(=O)N(N(C1=O)c2ccccc2)c3ccccc3)C";
+    	String[] expectedFGs = new String[] {"C=C", ""};
+    	testFind(moleculeSmiles, expectedFGs);
+	}
+	
+	//FIXME should the R-atom yield a ring?
+	@Test
+	public void testFind17() throws Exception {
+		String moleculeSmiles = "Clc1ccc2N=C3NC(=O)CN3Cc2c1Cl";
+    	String[] expectedFGs = new String[] {"Cl[R]", "[R]N=C(N([R])[R])N([R])C(=O)[R]", "Cl[R]"};
+    	testFind(moleculeSmiles, expectedFGs);
+	}
+	
+	@Test
+	public void testFind18() throws Exception {
+		String moleculeSmiles = "CC(=O)N[C@@H]1[C@@H](NC(=N)N)C=C(O[C@H]1[C@H](O)[C@H](O)CO)C(=O)O";
+    	String[] expectedFGs = new String[] {"[R]N([R])C(=O)[R]", "[R]N([R])C(=N[R])N([R])[R]", "O=C(O[R])C(=[C])O[R]" , "[C]OH", "[C]OH", "[C]OH"};
+    	testFind(moleculeSmiles, expectedFGs);
+	}
 	
 	private void testFind(String moleculeSmiles, String[] fGStrings) throws Exception {
 		SmilesParser smilesParser = new SmilesParser(DefaultChemObjectBuilder.getInstance());
