@@ -245,6 +245,13 @@ public class FunctionalGroupsFinderTest extends CDKTestCase {
     	testFind(moleculeSmiles, expectedFGs);
 	}
 	
+	@Test
+	public void testFind19() throws Exception {
+		String moleculeSmiles = "C[C@H](O)[C@H](O)[C@H]1CNc2nc(N)nc(O)c2N1";
+    	String[] expectedFGs = new String[] {"[C]OH", "[C]OH", "[R]N(H)[R]" , "R-:N=:R", "C_ar-NH2", "R-:N=:R", "C_ar-OH", "[R]N(H)[R]"};
+    	testFind(moleculeSmiles, expectedFGs);
+	}
+	
 	private void testFind(String moleculeSmiles, String[] fGStrings) throws Exception {
 		SmilesParser smilesParser = new SmilesParser(DefaultChemObjectBuilder.getInstance());
         IAtomContainer mol = smilesParser.parseSmiles(moleculeSmiles);
