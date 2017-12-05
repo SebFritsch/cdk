@@ -252,6 +252,14 @@ public class FunctionalGroupsFinderTest extends CDKTestCase {
     	testFind(moleculeSmiles, expectedFGs);
 	}
 	
+	//TODO carbons in C=C & carbon in C=O not marked in paper! -> 5 instead of 7 groups
+	@Test
+	public void testFind20() throws Exception {
+		String moleculeSmiles = "N[C@@H]1CCCCN(C1)c2c(Cl)cc3C(=O)C(=CN(C4CC4)c3c2Cl)C(=O)O";
+    	String[] expectedFGs = new String[] {"[C]N([H])[H]", "[R]N([R])[R]", "[R]Cl" , "[R]OC(=O)C(=[C]N([R])[R])C(=O)[R]", "[R]Cl"};
+    	testFind(moleculeSmiles, expectedFGs);
+	}
+	
 	private void testFind(String moleculeSmiles, String[] fGStrings) throws Exception {
 		SmilesParser smilesParser = new SmilesParser(DefaultChemObjectBuilder.getInstance());
         IAtomContainer mol = smilesParser.parseSmiles(moleculeSmiles);
