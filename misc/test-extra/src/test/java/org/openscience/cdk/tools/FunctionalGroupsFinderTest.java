@@ -175,11 +175,11 @@ public class FunctionalGroupsFinderTest extends CDKTestCase {
     	testFind(moleculeSmiles, expectedFGs);
 	}
 	
-	//TODO: Strange markings in paper! C in C=N should be marked too?! (thus, 4 instead of 5 groups)
+	//TODO: C in C=N not marked in paper! -> 4 instead of 5 groups
 	@Test
 	public void testFind10() throws Exception {
 		String moleculeSmiles = "Clc1ccc2Oc3ccccc3N=C(N4CCNCC4)c2c1";
-    	String[] expectedFGs = new String[] {"", "", "", "", ""};
+    	String[] expectedFGs = new String[] {"[R]Cl", "[R]O[R]", "[R]N([R])[C]=N[R]", "[R]N([H])[R]"};
     	testFind(moleculeSmiles, expectedFGs);
 	}
 	
@@ -190,11 +190,12 @@ public class FunctionalGroupsFinderTest extends CDKTestCase {
     	testFind(moleculeSmiles, expectedFGs);
 	}
 	
-	//TODO: acetal sp3-C not marked in paper ?!?!  
+	//FIXME aromaticity detection issue!
+	//TODO: acetal sp3-C not marked in paper!  
 	@Test
 	public void testFind12() throws Exception {
 		String moleculeSmiles = "OC[C@H]1O[C@H](C[C@@H]1O)n2cnc3[C@H](O)CNC=Nc23";
-    	String[] expectedFGs = new String[] {"", "", "", "", "", ""}; // FIXME 7 according to paper
+    	String[] expectedFGs = new String[] {"[C]O[H]", "[R]O[C]([R])N([R])[R]", "[C]OH", "", "", ""}; // FIXME 7 according to paper
     	testFind(moleculeSmiles, expectedFGs);
 	}
 	
@@ -212,13 +213,11 @@ public class FunctionalGroupsFinderTest extends CDKTestCase {
     	testFind(moleculeSmiles, expectedFGs);
 	}
 	
-	//TODO carbon in C=O not marked in paper!
-	//TODO carbons in C=C not marked in paper!
-	// thus creates one bigger functional group on the right side where there are 3 in the paper: [R]OC(=O)\C(=C/N([R])[R])\C(=O)[R]
+	//TODO carbon in C=O & carbons in C=C not marked in paper! -> 6 instead of 8 groups
 	@Test
 	public void testFind15() throws Exception {
 		String moleculeSmiles = "C[C@@H]1CN(C[C@H](C)N1)c2c(F)c(N)c3C(=O)C(=CN(C4CC4)c3c2F)C(=O)O";
-    	String[] expectedFGs = new String[] {"", "", "", "", "", ""}; //FIXME: 8 according to paper
+    	String[] expectedFGs = new String[] {"[R]N([R])[R]", "[R]N([H])[R]", "[R]F", "C_ar-NH2", "[R]OC(=O)\\C(=C/N([R])[R])\\C(=O)[R]", "[R]F"}; //FIXME: 8 according to paper
     	testFind(moleculeSmiles, expectedFGs);
 	}
 	
