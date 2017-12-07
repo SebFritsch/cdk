@@ -351,7 +351,7 @@ public class FunctionalGroupsFinder {
     		log.debug(String.format("Generalizing functional group (%d atoms)...", atomCount));
     		
     		// PRECHECKING FOR EXCEPTION CASES
-    		boolean isAldehydeOrKetone = false, isSingleO = false, isSecAmineOrSimpleThiol = false, isSingleN = false;
+    		boolean isSingleO = false, isSecAmineOrSimpleThiol = false, isSingleN = false;
     		
     		if(atomCount == 2) {
     			IBond bond = fGroup.bonds().iterator().next();
@@ -367,29 +367,25 @@ public class FunctionalGroupsFinder {
     				}
     			}
     		}
-    		else if(atomCount == 3 || atomCount == 4) {
-    			byte bondOrderSum = 0;
-    			for(IBond bond : fGroup.bonds()) {
-    				// check for C=O double bond
-    				if(bond.getOrder() == Order.DOUBLE && bond.getBegin().getAtomicNumber() + bond.getEnd().getAtomicNumber() == 14) {
-    					isAldehydeOrKetone = true; // aldehyde or ketone
+    		else if(atomCount == 3) {
+    			// checking for two carbons and one nitrogen should be enough 
+    			// (bond order has to be single or it should be more than three atoms anyway)
+    			byte cCount = 0, nCount = 0;
+    			for(IAtom atom : fGroup.atoms()) {
+    				if(atom.getAtomicNumber() == 6) {
+    					cCount++;
     					continue;
     				}
-    				bondOrderSum += bond.getOrder().numeric();
-    			}
-    			// if its neither aldehyde or ketone , all two bonds (-> 3 atoms) are single bonds...
-    			if(!isAldehydeOrKetone && bondOrderSum == 2) {
-    				int atomicNumberSum = 0;
-    				for(IAtom atom : fGroup.atoms()) {
-    					atomicNumberSum += atom.getAtomicNumber();
+    				else if(atom.getAtomicNumber() == 7) {
+    					nCount++;
+    					continue;
     				}
-    				if(atomicNumberSum == 19) {
-    					isSecAmineOrSimpleThiol = true; // sec. amide 
-    				}
+    				break;
     			}
+    			isSecAmineOrSimpleThiol = cCount == 2 && nCount == 1; 
     		}
-    		log.debug(String.format("	precheck result: 	isSingleO: %b, isSingleN: %b, isSecAmineOrSimpleThiol: %b, isAldehydeOrKetone: %b",
-    				isSingleO, isSingleN, isSecAmineOrSimpleThiol, isAldehydeOrKetone));
+    		log.debug(String.format("	precheck result: 	isSingleO: %b, isSingleN: %b, isSecAmineOrSimpleThiol: %b",
+    				isSingleO, isSingleN, isSecAmineOrSimpleThiol));
 
     		
     		// PROCESSING
@@ -408,7 +404,7 @@ public class FunctionalGroupsFinder {
     			if(atom.getAtomicNumber() == 6) {
     				// STEP 1: delete environments on carbons... see exceptions!
     				EnvironmentalCType type = atom.getProperty(ENVIRONMENTAL_C_FLAG);
-    				if(type == EnvironmentalCType.C_ON_C && !isAldehydeOrKetone) {
+    				if(type == EnvironmentalCType.C_ON_C) {
     					//FIXME quick & dirty fix
 //    					IAtom connectedC = atom.bonds().iterator().next().getOther(atom);
     					IAtom connectedC = fGroup.getConnectedBondsList(atom).get(0).getOther(atom);
