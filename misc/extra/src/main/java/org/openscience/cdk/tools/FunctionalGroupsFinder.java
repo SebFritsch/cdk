@@ -4,16 +4,13 @@ package org.openscience.cdk.tools;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.Queue;
 
 import org.openscience.cdk.Atom;
-import org.openscience.cdk.CDKConstants;
 import org.openscience.cdk.PseudoAtom;
 import org.openscience.cdk.graph.GraphUtil;
 import org.openscience.cdk.graph.GraphUtil.EdgeToBondMap;
@@ -128,9 +125,13 @@ public class FunctionalGroupsFinder {
     	log.debug("########## Starting search for atoms to mark ... ##########");
     	
     	// store marked atoms
-    	markedAtoms = new HashSet<>(molecule.getAtomCount());	// TODO: initial capacity!
+    	markedAtoms = new HashSet<>(Math.max((int) (molecule.getAtomCount()/.75f) + 1, 16));
     	
     	for(int idx = 0; idx < molecule.getAtomCount(); idx++) {
+    		// skip atoms that already got marked in a previous iteration
+    		if(markedAtoms.contains(idx)) {
+    			continue;
+    		}
     		IAtom cAtom = molecule.getAtom(idx);
     		int atomicNr = cAtom.getAtomicNumber();
     		
@@ -140,7 +141,6 @@ public class FunctionalGroupsFinder {
     			boolean isMarked = false;		// to detect if foor loop ran with or without marking the C atom
     			int oNSCounter = 0;				// count for the number of connected O, N & S atoms
     			for(int connectedIdx : adjList[idx]) {
-    				//TODO: scratch connectedAtom, replace by connectedBond.getOther? 
     				IAtom connectedAtom = molecule.getAtom(connectedIdx); 
     				IBond connectedBond = bondMap.get(idx, connectedIdx);
     				
@@ -148,7 +148,11 @@ public class FunctionalGroupsFinder {
     				if(connectedAtom.getAtomicNumber() != 1 
     						&& ((connectedBond.getOrder() == Order.DOUBLE || connectedBond.getOrder() == Order.TRIPLE)
     						&& !connectedBond.isAromatic())) {
-    					// set as marked and break out of connected atoms
+    					// set the connected atom as marked
+    					String connectedAtomCondition = connectedAtom.getAtomicNumber() == 6 ? "2.1/2.2" : "1";
+    					log.debug(String.format("Marking Atom #%d (%s) - Met condition %s", connectedIdx, connectedAtom.getSymbol(), connectedAtomCondition));
+    					markedAtoms.add(connectedIdx);
+    					// set the current atom as marked and break out of connected atoms
     					log.debug(String.format("Marking Atom #%d (%s) - Met condition 2.1/2.2", idx, cAtom.getSymbol())); 
     					isMarked = true;
     					break;
@@ -158,6 +162,9 @@ public class FunctionalGroupsFinder {
     						|| connectedAtom.getAtomicNumber() == 8
     						|| connectedAtom.getAtomicNumber() == 16)
     						&& connectedBond.getOrder() == Order.SINGLE){
+    					// set the connected O/N/S atom as marked
+    					log.debug(String.format("Marking Atom #%d (%s) - Met condition 1", connectedIdx, connectedAtom.getSymbol()));
+    					markedAtoms.add(connectedIdx);
     					// if "acetal C" (2+ O/N/S in single bonds connected tp sp3-C)... [CONDITION 2.3]
     					oNSCounter++;
     					// TODO: check for hybridization = sp3 instead of counting bonds? Has to be perceived though
@@ -177,7 +184,12 @@ public class FunctionalGroupsFinder {
     							for(int connectedInSphere3Idx : adjList[connectedInSphere2Idx]) {
     								IAtom connectedInSphere3Atom = molecule.getAtom(connectedInSphere3Idx);
     								if(connectedInSphere3Atom.equals(cAtom)) {
-    									// set as marked and break out of connected atoms
+    									// set connected atoms as marked
+    									log.debug(String.format("Marking Atom #%d (%s) - Met condition 2.4", connectedInSphere2Idx, connectedInSphere2Atom.getSymbol())); 
+    									log.debug(String.format("Marking Atom #%d (%s) - Met condition 2.4", connectedInSphere3Idx, connectedInSphere3Atom.getSymbol()));
+    									markedAtoms.add(connectedInSphere2Idx);
+    									markedAtoms.add(connectedInSphere2Idx);
+    									// set current atom as marked and break out of connected atoms
     									log.debug(String.format("Marking Atom #%d (%s) - Met condition 2.4", idx, cAtom.getSymbol())); 
     									isMarked = true; 
     									break;
@@ -224,7 +236,6 @@ public class FunctionalGroupsFinder {
      *			*	Environmental C's & type could better be stored in HashMap instead of atom's property!
      *			*	AtomContainerManipulator.extractSubstructure(IAtomContainer atomContainer, int... atomIndices)
      *				vs. cloning mol., deleting bonds/atoms & using ConnectivityChecker.partitionIntoMolecules(disconnectedContainer) ?
-     *			* 	DFS should be more memory efficient than BFS
      * NOTE:	*	returns groups with implicit hydrogens!
      */
     /**
@@ -327,12 +338,11 @@ public class FunctionalGroupsFinder {
      * TODO / NOTES
      * 
      * TODO:	*	change to private void!
-     * 			*	TODO: loop with iterator -> no need for extra remove list loop
      * 			*	FIXME: overhaul detection of env.C's on carbonyl-C's! works but its a quick & dirty fix!
      *			*	ATM: environmental C's are identified by an attached String property-flag
      *				option 1: store all of them (across all FGs) in a list of Hashmaps (idx - type)
      *				option 2: introduce inner class functionalGroup that stores an AC plus the HashSet.
-     *			*	is it faster to do pattern matching? see class Pattern & VentoFoggia
+     *			*	is it faster to do pattern matching for carbonyls? see class Pattern & VentoFoggia
      */
     /**
      * Generalizes the full environments of functional groups, providing a good balance between preserving 
@@ -418,7 +428,6 @@ public class FunctionalGroupsFinder {
     					if(!isCarbonylC) {
     						log.debug("	removing env. C (type C_ON_C)...");
     						atomsToRemove.add(atom);
-//    						fGroup.removeAtom(atom);
     						
     					}
     					else {
