@@ -20,9 +20,11 @@ package org.openscience.cdk.tools;
 
 import static org.hamcrest.Matchers.is;
 
+import java.beans.ExceptionListener;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -301,6 +303,89 @@ public class FunctionalGroupsFinderTest extends CDKTestCase {
         }
         
         this.assertIsomorphism(expectedFGs, fGs);
+	}
+	
+	// TODO: tidy up!
+	@Test
+	public void testPerformance1() throws Exception {
+		List<String> moleculeSmilesList = new LinkedList<>();
+		List<String[]> expectedFGsList = new LinkedList<>();
+		
+		// example 1
+		moleculeSmilesList.add("Cc1cc(C)nc(NS(=O)(=O)c2ccc(N)cc2)n1");
+		expectedFGsList.add(new String[] {"R-:N=:R", "[R]N([R])S(=O)(=O)[R]", "C_ar-NH2", "R-:N=:R"});
+		// example 2
+		moleculeSmilesList.add("NC(=N)c1ccc(\\\\\\\\C=C\\\\\\\\c2ccc(cc2O)C(=N)N)cc1");
+		expectedFGsList.add(new String[] {"NR=C-NR2", "C=C", "C_ar-OH", "NR=C-NR2"});
+		// example 3
+		moleculeSmilesList.add("CC(=O)Nc1nnc(s1)S(=O)(=O)N");
+		expectedFGsList.add(new String[] {"[R]N([R])C(=O)[R]", "R-:N-:N-:R", "R-:S-:R", "[R]S(=O)(=O)N([R])[R]"});
+		// example 4
+		moleculeSmilesList.add("NS(=O)(=O)c1cc2c(NCNS2(=O)=O)cc1Cl");
+		expectedFGsList.add(new String[] {"[R]S(=O)(=O)N([R])[R]", "[R]S(=O)(=O)N([R])[C]N([R])[R]", "Cl-R"});
+		// example 5
+		moleculeSmilesList.add("CNC1=Nc2ccc(Cl)cc2C(=N(=O)C1)c3ccccc3");
+		expectedFGsList.add(new String[] {"[R]N([R])[C]=N[R]", "Cl-R", "[R]N(=O)=[C]"});
+		
+		
+		
+		// parse smiles
+		List<IAtomContainer> molecules = new LinkedList<>();
+		List<List<IAtomContainer>> expectedFGs = new LinkedList<>();
+		
+		SmilesParser smilesParser = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+		for(String smiles : moleculeSmilesList) {
+			IAtomContainer mol = smilesParser.parseSmiles(smiles);
+			AtomContainerManipulator.percieveAtomTypesAndConfigureAtoms(mol);
+			Aromaticity.cdkLegacy().apply(mol);
+			molecules.add(mol);
+		}
+		
+		for(String[] a : expectedFGsList) {
+			List<IAtomContainer> expFGs = new LinkedList<>();
+			for(String s : a) {
+				expFGs.add(buildFunctionalGroup(s));
+			}
+			expectedFGs.add(expFGs);
+		}
+		
+		// ensure that all examples run
+		FunctionalGroupsFinder fgFinder = new FunctionalGroupsFinder();
+		for(int i = 0; i < molecules.size(); i++) {
+			IAtomContainer mol = molecules.get(i);
+			fgFinder.find(mol);
+			fgFinder.markAtoms(mol);
+			List<IAtomContainer> fGs = fgFinder.extractGroups(mol);
+			fGs = fgFinder.generalizeEnvironments(fGs);
+			
+			List<IAtomContainer> expFGs = expectedFGs.get(i);
+			Assert.assertThat("Number of functional groups did not match", fGs.size(), is(expFGs.size()));
+			assertIsomorphism(expFGs, fGs);
+		}
+		
+		// perf. test
+		int totalIterations = 20;
+		int singleIterations = 2000;
+		
+		long startTime, endTime;
+		for(int i = 0; i < totalIterations; i++) {
+			startTime = System.currentTimeMillis();
+			for(int j = 0; j < singleIterations; j++) {
+				// run all examples
+				for(IAtomContainer mol : molecules) {
+					fgFinder.find(mol);
+					fgFinder.markAtoms(mol);
+					List<IAtomContainer> fGs = fgFinder.extractGroups(mol);
+					fGs = fgFinder.generalizeEnvironments(fGs);
+				}
+			}
+			endTime = System.currentTimeMillis();
+			System.out.println(molecules.size()*singleIterations + " Iterations (" + molecules.size() + " cases): " + (endTime-startTime) +" ms");
+		}
+		
+		
+		
+		
 	}
     
     @Test
