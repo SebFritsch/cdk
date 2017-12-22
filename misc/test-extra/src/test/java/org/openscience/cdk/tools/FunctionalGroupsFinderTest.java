@@ -67,52 +67,6 @@ public class FunctionalGroupsFinderTest extends CDKTestCase {
     }
     
     @Test
-    public void testExtractGroups() throws Exception {
-    	SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
-        IAtomContainer mol = new AtomContainer();
-		try {
-			mol = smiPar.parseSmiles("NC(O)C\\C=C\\CC(=O)C1CO1");
-			//mol = smiPar.parseSmiles("CC(=O)N[C@@H]1[C@@H](NC(=N)N)C=C(O[C@H]1[C@H](O)[C@H](O)CO)C(=O)O");
-			
-			addExplicitHydrogens(mol);
-		} catch (Exception e) {
-			Assert.assertFalse(true);
-		}
-		try {
-			AtomContainerManipulator.percieveAtomTypesAndConfigureAtoms(mol);
-			Aromaticity.cdkLegacy().apply(mol);
-		} catch (Exception e) {
-			Assert.assertFalse(true);
-		}
-		
-		FunctionalGroupsFinder gF = new FunctionalGroupsFinder();
-		try {
-			gF.find(mol);
-		} catch (CloneNotSupportedException e1) {
-			Assert.assertFalse(true);
-		}
-		gF.markAtoms(mol);
-		
-		List<IAtomContainer> fGs = new ArrayList<>();
-		try {
-			fGs = gF.extractGroups(mol);
-		} catch (CloneNotSupportedException e) {
-			Assert.assertFalse(true);
-		}
-		
-		printToConsoleWithIndices(mol);
-		
-		System.out.println(fGs.size() + " FUNCTIONAL GROUPS:");
-		this.printMolFiles(fGs);
-
-		
-		fGs = gF.generalizeEnvironments(fGs);
-		
-		System.out.println("GENERALIZED FUNCTIONAL GROUPS:");
-		this.printMolFiles(fGs);
-    }
-    
-    @Test
     public void testFind1() throws Exception {
     	String moleculeSmiles = "Cc1cc(C)nc(NS(=O)(=O)c2ccc(N)cc2)n1";
     	String[] expectedFGs = new String[] {"R-:N=:R", "[R]N([R])S(=O)(=O)[R]", "C_ar-NH2", "R-:N=:R"};
