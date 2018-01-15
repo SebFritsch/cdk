@@ -188,7 +188,7 @@ public class FunctionalGroupsFinder {
     									log.debug(String.format("Marking Atom #%d (%s) - Met condition 2.4", connectedInSphere2Idx, connectedInSphere2Atom.getSymbol())); 
     									log.debug(String.format("Marking Atom #%d (%s) - Met condition 2.4", connectedInSphere3Idx, connectedInSphere3Atom.getSymbol()));
     									markedAtoms.add(connectedInSphere2Idx);
-    									markedAtoms.add(connectedInSphere2Idx);
+    									markedAtoms.add(connectedInSphere3Idx);
     									// set current atom as marked and break out of connected atoms
     									log.debug(String.format("Marking Atom #%d (%s) - Met condition 2.4", idx, cAtom.getSymbol())); 
     									isMarked = true; 
