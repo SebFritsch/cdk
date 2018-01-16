@@ -1,49 +1,46 @@
-/* Copyright (C) 1997-2007  The Chemistry Development Kit (CDK) project
- *
- * Contact: cdk-devel@lists.sourceforge.net
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public License
- * as published by the Free Software Foundation; either version 2.1
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
- */
 package org.openscience.cdk.tools;
+
 
 import static org.hamcrest.Matchers.is;
 
 import java.beans.ExceptionListener;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.StringWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+
+import javax.lang.model.util.Elements;
 
 import org.junit.Assert;
 import org.junit.Test;
 import org.openscience.cdk.AtomContainer;
 import org.openscience.cdk.CDKTestCase;
+import org.openscience.cdk.ChemFile;
 import org.openscience.cdk.DefaultChemObjectBuilder;
 import org.openscience.cdk.PseudoAtom;
 import org.openscience.cdk.aromaticity.Aromaticity;
+import org.openscience.cdk.aromaticity.ElectronDonation;
 import org.openscience.cdk.exception.CDKException;
 import org.openscience.cdk.exception.InvalidSmilesException;
+import org.openscience.cdk.graph.Cycles;
 import org.openscience.cdk.interfaces.IAtom;
 import org.openscience.cdk.interfaces.IAtomContainer;
 import org.openscience.cdk.interfaces.IBond;
 import org.openscience.cdk.interfaces.IBond.Order;
+import org.openscience.cdk.interfaces.IChemFile;
 import org.openscience.cdk.interfaces.IChemObjectBuilder;
 import org.openscience.cdk.interfaces.IPseudoAtom;
+import org.openscience.cdk.io.MDLV2000Reader;
 import org.openscience.cdk.io.MDLV2000Writer;
+import org.openscience.cdk.io.iterator.IteratingSDFReader;
+import org.openscience.cdk.io.IChemObjectReader.Mode;
 import org.openscience.cdk.isomorphism.Pattern;
 import org.openscience.cdk.isomorphism.Ullmann;
 import org.openscience.cdk.isomorphism.UniversalIsomorphismTester;
@@ -54,15 +51,17 @@ import org.openscience.cdk.silent.SilentChemObjectBuilder;
 import org.openscience.cdk.smiles.SmiFlavor;
 import org.openscience.cdk.smiles.SmilesGenerator;
 import org.openscience.cdk.smiles.SmilesParser;
+import org.openscience.cdk.tools.diff.ElementDiff;
 import org.openscience.cdk.tools.manipulator.AtomContainerManipulator;
+
 
 /**
  * @cdk.module test-standard
  * @author Sebastian Fritsch
  */
-public class FunctionalGroupsFinderTest extends CDKTestCase {
+public class ErtlFunctionalGroupsFinderTest extends CDKTestCase {
 
-    public FunctionalGroupsFinderTest() {
+    public ErtlFunctionalGroupsFinderTest() {
         super();
     }
     
@@ -223,7 +222,7 @@ public class FunctionalGroupsFinderTest extends CDKTestCase {
 		
 		this.printToConsoleWithIndices(mol);
 		
-		FunctionalGroupsFinder fgFinder = new FunctionalGroupsFinder();
+		ErtlFunctionalGroupsFinder fgFinder = new ErtlFunctionalGroupsFinder();
         fgFinder.find(mol);
         fgFinder.markAtoms(mol);
         List<IAtomContainer> fGs = fgFinder.extractGroups(mol);
@@ -304,7 +303,7 @@ public class FunctionalGroupsFinderTest extends CDKTestCase {
 		}
 		
 		// ensure that all examples run
-		FunctionalGroupsFinder fgFinder = new FunctionalGroupsFinder();
+		ErtlFunctionalGroupsFinder fgFinder = new ErtlFunctionalGroupsFinder();
 		for(int i = 0; i < molecules.size(); i++) {
 			IAtomContainer mol = molecules.get(i);
 			fgFinder.find(mol);

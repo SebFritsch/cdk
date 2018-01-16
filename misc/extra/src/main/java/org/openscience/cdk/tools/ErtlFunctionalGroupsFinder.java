@@ -22,8 +22,8 @@ import org.openscience.cdk.interfaces.IPseudoAtom;
 import org.openscience.cdk.tools.manipulator.AtomContainerManipulator;
 
 //TODO class info goes here
-public class FunctionalGroupsFinder {
-	private static ILoggingTool log = LoggingToolFactory.createLoggingTool(FunctionalGroupsFinder.class);
+public class ErtlFunctionalGroupsFinder {
+	private static ILoggingTool log = LoggingToolFactory.createLoggingTool(ErtlFunctionalGroupsFinder.class);
 	
 	/**
 	 * Defines the working mode.
@@ -63,7 +63,7 @@ public class FunctionalGroupsFinder {
     /**
      * Default constructor for FunctionalGroupsFinder.
      */
-    public FunctionalGroupsFinder() {
+    public ErtlFunctionalGroupsFinder() {
     	this(Mode.DEFAULT);
     }
     
@@ -72,7 +72,7 @@ public class FunctionalGroupsFinder {
      * 
      * @param mode working mode (see {@code FunctionalGroupsFinder.Mode}).
      */
-    public FunctionalGroupsFinder(Mode mode) {
+    public ErtlFunctionalGroupsFinder(Mode mode) {
     	this.mode = mode;
     }
     
