@@ -165,19 +165,28 @@ public class ErtlFunctionalGroupsFinder {
     					// set the connected O/N/S atom as marked
     					log.debug(String.format("Marking Atom #%d (%s) - Met condition 1", connectedIdx, connectedAtom.getSymbol()));
     					markedAtoms.add(connectedIdx);
-    					// if "acetal C" (2+ O/N/S in single bonds connected tp sp3-C)... [CONDITION 2.3]
-    					oNSCounter++;
-    					// TODO: check for hybridization = sp3 instead of counting bonds? Has to be perceived though
-    					// FIXME: getImplicitHydrogenCount can be null / CDKConstants.UNSET for unset Atoms -> check?!
-    					if(oNSCounter > 1 && adjList[idx].length + cAtom.getImplicitHydrogenCount() == 4) {
-    						// set as marked and break out of connected atoms
-    						log.debug(String.format("Marking Atom #%d (%s) - Met condition 2.3", idx, cAtom.getSymbol())); 
-    						isMarked = true;
-    						break;
+    					// if "acetal C" (2+ O/N/S in single bonds connected to sp3-C)... [CONDITION 2.3]
+    					if(!connectedAtom.isAromatic()) {
+    						boolean isAllSingleBonds = true;
+    						for(int connectedInSphere2Idx : adjList[connectedIdx]) {
+    							IBond sphere2Bond = bondMap.get(connectedIdx, connectedInSphere2Idx);
+    							if(sphere2Bond.getOrder() != Order.SINGLE) {
+    								isAllSingleBonds = false;
+    								break;
+    							}
+    						}
+    						if(isAllSingleBonds) {
+    							oNSCounter++;
+    							// FIXME: getImplicitHydrogenCount can be null / CDKConstants.UNSET for unset Atoms -> check?!
+    							if(oNSCounter > 1 && adjList[idx].length + cAtom.getImplicitHydrogenCount() == 4) {
+    								// set as marked and break out of connected atoms
+    								log.debug(String.format("Marking Atom #%d (%s) - Met condition 2.3", idx, cAtom.getSymbol())); 
+    								isMarked = true;
+    								break;
+    							}
+    						}
     					}
-    					
     					// if part of oxirane, aziridine and thiirane ring... [CONDITION 2.4]
-    					// FIXME not the best way to check every C like this!
     					for(int connectedInSphere2Idx : adjList[connectedIdx]) {
     						IAtom connectedInSphere2Atom = molecule.getAtom(connectedInSphere2Idx);
     						if(connectedInSphere2Atom.getAtomicNumber() == 6) {

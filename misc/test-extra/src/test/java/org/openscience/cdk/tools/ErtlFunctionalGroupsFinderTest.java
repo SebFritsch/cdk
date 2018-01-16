@@ -144,13 +144,11 @@ public class ErtlFunctionalGroupsFinderTest extends CDKTestCase {
     	String[] expectedFGs = new String[] {"[R]F", "[R]F", "[R]F", "O=C([R])N([R])[R]", "[R]N=[C]", "[R]Cl"};
     	testFind(moleculeSmiles, expectedFGs);
 	}
-	
-	//FIXME aromaticity detection issue!
-	//TODO: acetal sp3-C not marked in paper!  
+	 
 	@Test
 	public void testFind12() throws Exception {
 		String moleculeSmiles = "OC[C@H]1O[C@H](C[C@@H]1O)n2cnc3[C@H](O)CNC=Nc23";
-    	String[] expectedFGs = new String[] {"[C]O[H]", "[R]O[C]([R])N([R])[R]", "[C]OH", "", "", ""}; // FIXME 7 according to paper
+    	String[] expectedFGs = new String[] {"[C]O[H]", "[R]O[R]", "[C]OH", "R-:N(-R)-:R" , "R-:N=:R", "[C]OH", "[R]N=CN([R])[R]"}; // FIXME 7 according to paper
     	testFind(moleculeSmiles, expectedFGs);
 	}
 	
@@ -519,6 +517,24 @@ public class ErtlFunctionalGroupsFinderTest extends CDKTestCase {
         	container.setAtoms(new IAtom[] {a1, a2, a3});
         	container.setBonds(new IBond[] {b1, b2});
         	return container;
+        	
+        case "R-:N(-R)-:R":
+        	a1 = builder.newInstance(IPseudoAtom.class, "R");
+        	a2 = builder.newInstance(IPseudoAtom.class, "R");
+        	a3 = builder.newInstance(IPseudoAtom.class, "R");
+        	a4 = builder.newInstance(IAtom.class, "N");
+
+        	b1 = builder.newInstance(IBond.class, a2, a4, Order.SINGLE);
+        	b1.setIsAromatic(true);
+        	b2 = builder.newInstance(IBond.class, a3, a4, Order.SINGLE);
+        	b2.setIsAromatic(true);
+        	b3 = builder.newInstance(IBond.class, a1, a4, Order.SINGLE);
+        	//b3.setIsAromatic(true);
+        	
+        	container = new AtomContainer();
+        	container.setAtoms(new IAtom[] {a1, a2, a3, a4});
+        	container.setBonds(new IBond[] {b3, b2, b1});
+        	return container;
         
         case "C_ar-NH2":
             a1 = builder.newInstance(IAtom.class, "C");
@@ -535,7 +551,8 @@ public class ErtlFunctionalGroupsFinderTest extends CDKTestCase {
             container.setAtoms(new IAtom[] {a1, a2, a3, a4});
             container.setBonds(new IBond[] {b1, b2, b3});
             return container;
-            
+        
+        // TODO remove
         case "NR=C-NR2":
             a1 = builder.newInstance(IPseudoAtom.class, "R");
             a2 = builder.newInstance(IPseudoAtom.class, "R");
@@ -555,6 +572,7 @@ public class ErtlFunctionalGroupsFinderTest extends CDKTestCase {
             container.setBonds(new IBond[] {b1, b2, b3, b4, b5});
             return container;
             
+        // TODO remove & replace by [C]=[C]    
         case "C=C":
             a1 = builder.newInstance(IAtom.class, "C");
             a2 = builder.newInstance(IAtom.class, "C");
@@ -630,7 +648,8 @@ public class ErtlFunctionalGroupsFinderTest extends CDKTestCase {
             container.setAtoms(new IAtom[] {a1, a2, a3, a4});
             container.setBonds(new IBond[] {b1, b2, b3});
             return container;
-            
+        
+        // TODO remove & replace by Cl[R]
         case "Cl-R":
             a1 = builder.newInstance(IPseudoAtom.class, "R");
             a2 = builder.newInstance(IAtom.class, "Cl");
