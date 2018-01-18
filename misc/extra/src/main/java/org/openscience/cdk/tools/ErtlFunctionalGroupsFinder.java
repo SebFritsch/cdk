@@ -327,7 +327,8 @@ public class ErtlFunctionalGroupsFinder {
     		
     		// extract functional group from the collected indices
     		// FIXME: workaround, see todo above! 
-    		int[] fGroupIndicesArray = fGroupIndices.stream().mapToInt(i->i).toArray();
+    		//int[] fGroupIndicesArray = fGroupIndices.stream().mapToInt(i->i).toArray();
+    		int[] fGroupIndicesArray = null;
     		IAtomContainer fGroup = extractGroupByIndices(molecule, fGroupIndicesArray);
     		
     		log.debug("Extracting functional group by atom indices: ", Arrays.toString(fGroupIndicesArray));
@@ -526,6 +527,10 @@ public class ErtlFunctionalGroupsFinder {
      * @param atom atom with implicit hydrogens that should be converted
      */
     private static void restoreExplicitHydrogens(IAtomContainer molecule, IAtom atom) {
+    	if(atom.getImplicitHydrogenCount() == null) {
+    		System.out.println("WARNING: atom with unset implicit hydrogen count");
+    		return;
+    	}
     	int formerAtomCount = molecule.getAtomCount();
     	for(int i = 0; i < atom.getImplicitHydrogenCount(); i++) {
     		IAtom hydrogen = new Atom(1);
@@ -539,7 +544,7 @@ public class ErtlFunctionalGroupsFinder {
     	atom.setImplicitHydrogenCount(0);
     }
     
-    public class RAtom extends PseudoAtom{
+    public class RAtom extends PseudoAtom {
     	public boolean matches(IAtom atom) {
     		return true;
     	}

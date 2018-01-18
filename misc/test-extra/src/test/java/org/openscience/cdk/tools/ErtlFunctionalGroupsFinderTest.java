@@ -18,6 +18,7 @@ import java.util.List;
 
 import javax.lang.model.util.Elements;
 
+import org.apache.commons.math.stat.Frequency;
 import org.junit.Assert;
 import org.junit.Test;
 import org.openscience.cdk.AtomContainer;
@@ -27,11 +28,17 @@ import org.openscience.cdk.DefaultChemObjectBuilder;
 import org.openscience.cdk.PseudoAtom;
 import org.openscience.cdk.aromaticity.Aromaticity;
 import org.openscience.cdk.aromaticity.ElectronDonation;
+import org.openscience.cdk.atomtype.CDKAtomTypeMatcher;
 import org.openscience.cdk.exception.CDKException;
 import org.openscience.cdk.exception.InvalidSmilesException;
+import org.openscience.cdk.graph.ConnectivityChecker;
 import org.openscience.cdk.graph.Cycles;
+import org.openscience.cdk.inchi.InChIGenerator;
+import org.openscience.cdk.inchi.InChIGeneratorFactory;
 import org.openscience.cdk.interfaces.IAtom;
 import org.openscience.cdk.interfaces.IAtomContainer;
+import org.openscience.cdk.interfaces.IAtomContainerSet;
+import org.openscience.cdk.interfaces.IAtomType;
 import org.openscience.cdk.interfaces.IBond;
 import org.openscience.cdk.interfaces.IBond.Order;
 import org.openscience.cdk.interfaces.IChemFile;
@@ -51,8 +58,17 @@ import org.openscience.cdk.silent.SilentChemObjectBuilder;
 import org.openscience.cdk.smiles.SmiFlavor;
 import org.openscience.cdk.smiles.SmilesGenerator;
 import org.openscience.cdk.smiles.SmilesParser;
+import org.openscience.cdk.tools.ErtlFunctionalGroupsFinder.RAtom;
 import org.openscience.cdk.tools.diff.ElementDiff;
 import org.openscience.cdk.tools.manipulator.AtomContainerManipulator;
+import org.openscience.cdk.tools.manipulator.AtomTypeManipulator;
+
+import com.google.common.collect.HashMultiset;
+import com.google.common.collect.Multimaps;
+import com.google.common.collect.Multiset;
+import com.google.common.collect.Multisets;
+
+import net.sf.jniinchi.INCHI_RET;
 
 
 /**
@@ -212,11 +228,65 @@ public class ErtlFunctionalGroupsFinderTest extends CDKTestCase {
     	testFind(moleculeSmiles, expectedFGs);
 	}
 	
-	private void testFind(String moleculeSmiles, String[] fGStrings) throws Exception {
+	@Test
+	public void testFindExtraS() throws Exception {
+		String moleculeSmiles = "SCCSCC=S";
+    	String[] expectedFGs = new String[] {"HS[R]", "[R]S[R]", "[C]=S"};
+    	testFind(moleculeSmiles, expectedFGs);
+	}
+	
+	@Test
+	public void testAtomAromaticity() throws Exception {
+		String moleculeSmiles = "Oc1ccccc1";
+		
 		SmilesParser smilesParser = new SmilesParser(DefaultChemObjectBuilder.getInstance());
         IAtomContainer mol = smilesParser.parseSmiles(moleculeSmiles);
         AtomContainerManipulator.percieveAtomTypesAndConfigureAtoms(mol);
 		Aromaticity.cdkLegacy().apply(mol);
+		
+		for(IAtom a : mol.atoms()) {
+			if(a.isAromatic()) {
+				System.out.println("aromatic " + a.getSymbol());
+			}
+		}
+		System.out.println("---------------");
+		mol = AtomContainerManipulator.extractSubstructure(mol, new int[]{0,1,2,4});
+		for(IAtom a : mol.atoms()) {
+			if(a.isAromatic()) {
+				System.out.println("aromatic " + a.getSymbol());
+			}
+		}
+	}
+	
+	@Test
+	public void testFindAromaticityCases() throws Exception {
+		// my expected results for...
+		
+    	// testFind10 = Case #1
+		// OUUTCOME: all models give the same result
+    	String moleculeSmiles10 = "Clc1ccc2Oc3ccccc3N=C(N4CCNCC4)c2c1";
+    	String[] expectedFGs10 = new String[] {"[R]Cl", "[R]O[R]", "[R]N([R])[C]=N[R]", "[R]N([H])[R]"};
+    	//testFind15 = Case #2
+    	// OUTCOME: different result with dalight() TODO doc
+    	String moleculeSmiles15 = "C[C@@H]1CN(C[C@H](C)N1)c2c(F)c(N)c3C(=O)C(=CN(C4CC4)c3c2F)C(=O)O";
+    	String[] expectedFGs15 = new String[] {"[R]N([R])[R]", "[R]N([H])[R]", "[R]F", "C_ar-NH2", "[R]OC(=O)\\C(=C/N([R])[R])\\C(=O)[R]", "[R]F"};
+    	// testFind20 = Case #4
+		// OUTCOME: different result with daylight()! TODO doc
+		String moleculeSmiles20 = "N[C@@H]1CCCCN(C1)c2c(Cl)cc3C(=O)C(=CN(C4CC4)c3c2Cl)C(=O)O";
+    	String[] expectedFGs20 = new String[] {"[C]N([H])[H]", "[R]N([R])[R]", "[R]Cl" , "[R]OC(=O)C(=[C]N([R])[R])C(=O)[R]", "[R]Cl"};
+    	
+    	testFind(moleculeSmiles15, expectedFGs15, new Aromaticity(ElectronDonation.daylight(), Cycles.all()));
+	}
+	
+	private void testFind(String moleculeSmiles, String[] fGStrings) throws Exception {
+		testFind(moleculeSmiles, fGStrings, Aromaticity.cdkLegacy());
+	}
+	
+	private void testFind(String moleculeSmiles, String[] fGStrings, Aromaticity aromaticity) throws Exception {
+		SmilesParser smilesParser = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        IAtomContainer mol = smilesParser.parseSmiles(moleculeSmiles);
+        AtomContainerManipulator.percieveAtomTypesAndConfigureAtoms(mol);
+		aromaticity.apply(mol);
 		
 		this.printToConsoleWithIndices(mol);
 		
@@ -332,11 +402,145 @@ public class ErtlFunctionalGroupsFinderTest extends CDKTestCase {
 			}
 			endTime = System.currentTimeMillis();
 			System.out.println(molecules.size()*singleIterations + " Iterations (" + molecules.size() + " cases): " + (endTime-startTime) +" ms");
-		}
+		}	
+	}
+	
+	@Test
+	public void testChEBI_lite_3star() throws Exception {
+		List<IAtomContainer> molecules = new LinkedList<>();
+		//String filename = "data/mdl/ChEBI/ChEBI_lite_3star.sdf";
+		String filename = "C:/Users/ETPCO/Lokal Documents/ChEBI/ChEBI_lite_3star_minicrop.sdf";
+		//String filename = "data/mdl/BremserPredictionTest.mol";
+        //InputStream ins = this.getClass().getClassLoader().getResourceAsStream(filename);
+		InputStream in = new FileInputStream(filename);
+        MDLV2000Reader reader = new MDLV2000Reader(in, Mode.STRICT);
+        
+        int readerStopsCount = 0;
+        int basicFilteredCount = 0;
+        int oranometallicCount = 0; // counts structures with 1 or more metals/metaloids
+        int chargeCount = 0; // counts structures with 1 or more charged atoms
+        int unconnectedCount = 0; // counts the atom containers that are not connected
+        int invalidCount = 0;
+//        for(IAtomContainer mol = reader.read(new AtomContainer()); mol != null;){
+//        	n++;
+//        	System.out.println(n);
+//        }
+        IAtomContainer mol = new AtomContainer();
+        HashSet<String> nameSet = new HashSet<>();
+        HashMap<String, Integer> exceptionCountMap = new HashMap<>();
+        HashMap<String, Integer> metalsCountMap = new HashMap<>();
+        while(true){
+        	boolean isChargeCounted = false;
+        	boolean isMetalsCounted = false;
+        	boolean isUnconnected = false;
+        	boolean isInvalid = false;
+        	readerStopsCount++;
+        	try {
+        		mol = reader.read(new AtomContainer());
+        	}
+        	catch(Exception e) {
+        		exceptionCountMap.put(e.getMessage(), exceptionCountMap.get(e.getMessage()) == null ? 1 : exceptionCountMap.get(e.getMessage()) + 1);
+        		System.out.println("Reading error in enty " + readerStopsCount);
+        		continue;
+        	}
+        	if(mol == null) {
+        		break;
+        	}
+        	if(mol.getAtomCount() == 0 || mol.getBondCount() == 0) {
+        		Exception e= new Exception("Atom and/or Bond count is zero!");
+        		exceptionCountMap.put(e.getMessage(), exceptionCountMap.get(e.getMessage()) == null ? 1 : exceptionCountMap.get(e.getMessage()) + 1);
+        		System.out.println("Skipping enty " + readerStopsCount);
+        		continue;
+        	}
+        	basicFilteredCount++;
+        	String name = mol.getProperty("ChEBI Name");
+        	//nameSet.add(name);
+        	//use mol
+        	System.out.println(readerStopsCount + " ("+name+")");
+        	
+        	
+        	
+        	AtomContainerManipulator.percieveAtomTypesAndConfigureAtoms(mol);
+        	HashSet<Integer> nonmetallicAtomicNumbers = new HashSet<>(Arrays.asList( //also non metalloid
+        			1, 2, 6, 7, 8, 9, 10, 15, 16, 17, 18, 34, 35, 36, 53, 54, 86));
+        	
+        	for(IAtom atom : mol.atoms()) {
+        		if(!nonmetallicAtomicNumbers.contains(atom.getAtomicNumber())) {
+        			if(!isMetalsCounted) {
+        				oranometallicCount++;
+        				metalsCountMap.put(atom.getSymbol(), metalsCountMap.get(atom.getSymbol()) == null ? 1 : metalsCountMap.get(atom.getSymbol()) + 1);
+        				isMetalsCounted = true;
+        			}
+        		}
+        		if(atom.getFormalCharge() != 0) {
+        			if(!isChargeCounted) {
+        				chargeCount++;
+        				isChargeCounted = true;
+        			}
+        		}
+        	}
+        	if(!ConnectivityChecker.isConnected(mol)) {
+        		unconnectedCount++;
+        		isUnconnected = true;
+        	}
+        	
+        	if(isChargeCounted || isUnconnected) {
+        		try {
+        			mol = fragmentAndNeutraliseCharges(mol);
+        		}
+        		catch (CDKException e) {
+        			invalidCount++;
+        			isInvalid = true;
+        		}
+        	}
+        	
+        	if(!isMetalsCounted && !isInvalid) {
+        		Aromaticity.cdkLegacy().apply(mol);
+        		molecules.add(mol);
+        	}
+        }
+        
+        
+
+		//IteratingSDFReader reader = new IteratingSDFReader(in, DefaultChemObjectBuilder.getInstance(), true);
 		
+//		List<IAtomContainer> atomContainerList = new LinkedList<>();
+//		while(reader.hasNext()) {
+//			IAtomContainer c = reader.next();
+//			if(c == null)
+//				System.out.println("Could not read entry.");
+//			else
+//				atomContainerList.add(reader.next());
+//		}
 		
-		
-		
+        //IChemFile chemFile = reader.read(new ChemFile());
+        reader.close();
+        System.out.println("Found " + molecules.size() + " valid structures.");
+        System.out.println("Read " + basicFilteredCount + " structures."); //Name set size: " + nameSet.size());
+        System.out.println("with " + oranometallicCount + " organometallic structures & " + chargeCount + " structures with at least 1 charged atom & " + unconnectedCount + " unconnected structures");
+        System.out.println("Number of invalid structures: " + invalidCount);
+//        System.out.println("Metals and Metaloids log:");
+//        for(String symbol : metalsCountMap.keySet()) {
+//        	System.out.println(metalsCountMap.get(symbol) + "x: " + symbol);
+//        }
+        //System.out.println("Exception log:");
+        //for(String message : exceptionCountMap.keySet()) {
+        //	System.out.println(exceptionCountMap.get(message) + "x: " + message);
+        //}
+        System.out.println("######## start processing ... ##########");
+        List<IAtomContainer> allFGs = new LinkedList<>();
+        ErtlFunctionalGroupsFinder fgFinder = new ErtlFunctionalGroupsFinder();
+        for(IAtomContainer aC : molecules) {
+        	
+            fgFinder.find(aC);
+            fgFinder.markAtoms(aC);
+            List<IAtomContainer> fGs = fgFinder.extractGroups(aC);
+            fGs = fgFinder.generalizeEnvironments(fGs);
+            allFGs.addAll(fGs);
+        }
+        System.out.println("######## processing done ##########");
+        
+        printMostCommonFunctionalGroups(allFGs);
 	}
     
     @Test
@@ -402,6 +606,139 @@ public class ErtlFunctionalGroupsFinderTest extends CDKTestCase {
 		endTime = System.currentTimeMillis();
 		System.out.println("UITester: " + (endTime - startTime) + " ms");
 		}
+    }
+    
+    @Test
+    public void testFragmentAndNeutraliseCharges() throws Exception{
+    	String smiles = "CC[O-].C";
+    	
+    	SmilesParser smilesParser = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        IAtomContainer mol = smilesParser.parseSmiles(smiles);
+        AtomContainerManipulator.percieveAtomTypesAndConfigureAtoms(mol);
+		Aromaticity.cdkLegacy().apply(mol);
+		
+		mol = fragmentAndNeutraliseCharges(mol);
+		
+		SmilesGenerator sg = SmilesGenerator.unique();
+		Assert.assertEquals("OCC", sg.create(mol));
+    }
+    
+    private IAtomContainer fragmentAndNeutraliseCharges(IAtomContainer mol) throws CDKException {
+    	if(!ConnectivityChecker.isConnected(mol)) {
+    		IAtomContainerSet fragmentSet = ConnectivityChecker.partitionIntoMolecules(mol);
+    		IAtomContainer biggestFragment = null;
+    		for(IAtomContainer fragment : fragmentSet.atomContainers()) {
+    			 if(biggestFragment == null || biggestFragment.getAtomCount() < fragment.getAtomCount()) {
+    				 biggestFragment = fragment;
+    			 }
+    		}
+    		mol = biggestFragment;
+    	}
+    	
+    	CDKHydrogenAdder hydrogenAdder = CDKHydrogenAdder.getInstance(mol.getBuilder());
+    	CDKAtomTypeMatcher matcher = CDKAtomTypeMatcher.getInstance(mol.getBuilder());
+    	for(IAtom atom : mol.atoms()) {
+    		int formalCharge = atom.getFormalCharge();
+    		if(formalCharge != 0) {
+    			atom.setFormalCharge(0);
+    			IAtomType matched = matcher.findMatchingAtomType(mol, atom);
+    			if (matched != null) AtomTypeManipulator.configure(atom, matched);
+				hydrogenAdder.addImplicitHydrogens(mol, atom);
+    		}
+    	}
+    	
+    	return mol;
+    }
+    
+    private void printMostCommonFunctionalGroups(List<IAtomContainer> molecules) throws CDKException {
+    	Multiset<String> occurences = HashMultiset.create(); // counts occurences of inchiKeys
+    	HashMap<String,String> inchiKeyToSmilesMap = new HashMap<>(); // maps inchiKeys to unique SMILES
+    	
+    	SmilesGenerator smilesGen = SmilesGenerator.unique();
+    	InChIGeneratorFactory factory = InChIGeneratorFactory.getInstance();
+    	
+    	int skippedCount = 0;
+    	
+    	molLoop:
+    	for(IAtomContainer mol : molecules) {
+//    		//replace R-Atoms by U
+    		for(IAtom atom : mol.atoms()) {
+    			if(atom instanceof IPseudoAtom) {
+    				atom.setImplicitHydrogenCount(0);
+//    				IAtom replacementAtom = new Atom("U");
+//    				replacementAtom.setImplicitHydrogenCount(0);
+//    				AtomContainerManipulator.replaceAtomByAtom(mol, atom, replacementAtom);
+    			}
+    			//replace aromatic C's by Au
+    			else if (atom.getAtomicNumber() == 6 && atom.isAromatic()) {
+    				IAtom replacementAtom = new Atom("Au");
+    				replacementAtom.setImplicitHydrogenCount(0);
+    				AtomContainerManipulator.replaceAtomByAtom(mol, atom, replacementAtom);
+    				//System.out.println("###### replaced aromatic" + atom);
+    			}
+    		}
+//    		for(IAtom atom : mol.atoms()) {
+//    			if(atom.getImplicitHydrogenCount() == null) {
+//    				skippedCount ++;
+//    				System.out.println("UNSET IMPL. HYDROGEN COUNT ON " + atom.getSymbol());
+//    				continue molLoop; //FIXME!!!
+//    			}
+//    		}
+    		// strip aromaticity info from bonds
+    		for(IBond bond : mol.bonds()) {
+    			bond.setIsAromatic(false);
+    		}
+    		// strip aromaticity info from atoms & remove implicit hydrogens
+    		for(IAtom atom : mol.atoms()) {
+    			atom.setImplicitHydrogenCount(0);
+    			atom.setIsAromatic(false);
+    		}
+    		// create unique smiles
+    		String smiles = smilesGen.create(mol);
+    		// create inchiKey
+    		InChIGenerator gen = factory.getInChIGenerator(mol, "FixedH");
+    		String inchiKey = gen.getInchiKey();
+    		INCHI_RET returnType = gen.getReturnStatus();
+    		if(returnType == INCHI_RET.WARNING) {
+    			// warning but still works
+    			System.out.println("### Inchi WARNING: " + gen.getMessage());
+    		}
+    		else if(returnType != INCHI_RET.OKAY) {
+    			// skip fG on error
+    			System.out.println("### Inchi ERROR !!! (->Skipping): " + gen.getMessage());
+    			skippedCount++;
+    			continue molLoop;
+    		}
+    		// count 
+    		occurences.add(inchiKey);
+    		// map inchiKey to SMILES if not done before
+    		if(inchiKeyToSmilesMap.containsKey(inchiKey)) {
+    			// if it already contains the inchiKey, double check if the SMILES for the inchiKey are equal
+    			String smilesInMap = inchiKeyToSmilesMap.get(inchiKey);
+    			if(!smiles.equals(smilesInMap)) {
+    				System.out.println("### Inchi/Smiles WARNING: InchiKey " + inchiKey + " mapped to SMILES " + smilesInMap + ". Other proposes SMILES " + smiles);
+    			}
+    		}
+    		else {
+    			inchiKeyToSmilesMap.put(inchiKey, smiles);
+    		}
+    		
+    		// print to console
+    		int frequencyThreshold = 10; // threshold for printout
+    		int totalFGCount = occurences.size();
+    		System.out.println("-----------------------------------------------------------------");
+    		System.out.println("Counted " + occurences.size() + " unique FGs.");
+        	System.out.println("Skipped " + skippedCount);
+    		String format = "%-20s%-20s%s%s";
+    		for(String key : Multisets.copyHighestCountFirst(occurences)) {
+    			String smi = inchiKeyToSmilesMap.get(key);
+    			int frequency = occurences.count(key);
+    			double percentage = frequency/totalFGCount * 100;
+    			
+    			if(frequency >= frequencyThreshold)
+    				System.out.printf(format, frequency + "x", percentage + "%", smi);
+    		}
+    	}
     }
     
     private void printToConsoleWithIndices(IAtomContainer mol) {
