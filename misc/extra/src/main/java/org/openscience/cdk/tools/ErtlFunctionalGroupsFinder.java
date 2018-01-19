@@ -441,8 +441,7 @@ public class ErtlFunctionalGroupsFinder {
     						
     					}
     					else {
-    						IPseudoAtom rAtom = new PseudoAtom("R");
-        					rAtom.setAttachPointNum(1);
+    						IPseudoAtom rAtom = createRAtom();
         					AtomContainerManipulator.replaceAtomByAtom(fGroup, atom, rAtom);
         					log.debug("	replacing env. C (type C_ON_C, carbonyl-C) by R-atom...");
     					}
@@ -451,8 +450,7 @@ public class ErtlFunctionalGroupsFinder {
     				// STEP 3: replace other environmental C's by R-Atoms (represent H or C)... see exceptions!
     				// TODO: double check exception for carbonyls!
     				else if(type == EnvironmentalCType.C_ON_HETEROATOM && !isSingleN && !isSingleO) {
-    					IPseudoAtom rAtom = new PseudoAtom("R");
-    					rAtom.setAttachPointNum(1);
+    					IPseudoAtom rAtom = createRAtom();
     					AtomContainerManipulator.replaceAtomByAtom(fGroup, atom, rAtom);
     					log.debug("	replacing env. C (type C_ON_HETEROATOM) by R-atom...");
     				}
@@ -462,8 +460,7 @@ public class ErtlFunctionalGroupsFinder {
     				if(atom.getImplicitHydrogenCount() != null) {
     					int rAtomsToAdd = atom.getImplicitHydrogenCount();
     					for(int i = 0; i < rAtomsToAdd; i++) {
-    						IPseudoAtom rAtom = new PseudoAtom("R");
-    						rAtom.setAttachPointNum(1);
+    						IPseudoAtom rAtom = createRAtom();
     						IBond bond = atom.getBuilder().newBond();
     						bond.setAtoms(new IAtom[] {rAtom, atom});
     						bond.setOrder(Order.SINGLE); // TODO: necessary?
@@ -544,10 +541,14 @@ public class ErtlFunctionalGroupsFinder {
     	atom.setImplicitHydrogenCount(0);
     }
     
-    public class RAtom extends PseudoAtom {
-    	public boolean matches(IAtom atom) {
-    		return true;
-    	}
-    	
+    /**
+     * Creates a new R-Atom (representing C or H)
+     * @return R-Atom
+     */
+    private static IPseudoAtom createRAtom() {
+    	IPseudoAtom rAtom = new PseudoAtom("R");
+		rAtom.setAttachPointNum(1);
+		rAtom.setImplicitHydrogenCount(0);
+		return rAtom;
     }
 }
