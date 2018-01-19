@@ -21,6 +21,8 @@ import org.openscience.cdk.interfaces.IBond.Order;
 import org.openscience.cdk.interfaces.IPseudoAtom;
 import org.openscience.cdk.tools.manipulator.AtomContainerManipulator;
 
+import com.google.common.primitives.Ints;
+
 //TODO class info goes here
 public class ErtlFunctionalGroupsFinder {
 	private static ILoggingTool log = LoggingToolFactory.createLoggingTool(ErtlFunctionalGroupsFinder.class);
@@ -326,9 +328,7 @@ public class ErtlFunctionalGroupsFinder {
     		log.debug("	search completed.");
     		
     		// extract functional group from the collected indices
-    		// FIXME: workaround, see todo above! 
-    		//int[] fGroupIndicesArray = fGroupIndices.stream().mapToInt(i->i).toArray();
-    		int[] fGroupIndicesArray = null;
+    		int[] fGroupIndicesArray = Ints.toArray(fGroupIndices);
     		IAtomContainer fGroup = extractGroupByIndices(molecule, fGroupIndicesArray);
     		
     		log.debug("Extracting functional group by atom indices: ", Arrays.toString(fGroupIndicesArray));
