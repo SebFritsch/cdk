@@ -58,7 +58,7 @@ import org.openscience.cdk.silent.SilentChemObjectBuilder;
 import org.openscience.cdk.smiles.SmiFlavor;
 import org.openscience.cdk.smiles.SmilesGenerator;
 import org.openscience.cdk.smiles.SmilesParser;
-import org.openscience.cdk.tools.ErtlFunctionalGroupsFinder.RAtom;
+//import org.openscience.cdk.tools.ErtlFunctionalGroupsFinder.RAtom;
 import org.openscience.cdk.tools.diff.ElementDiff;
 import org.openscience.cdk.tools.manipulator.AtomContainerManipulator;
 import org.openscience.cdk.tools.manipulator.AtomTypeManipulator;
@@ -194,7 +194,7 @@ public class ErtlFunctionalGroupsFinderTest extends CDKTestCase {
 	@Test
 	public void testFind16() throws Exception {
 		String moleculeSmiles = "CC(=CCC1C(=O)N(N(C1=O)c2ccccc2)c3ccccc3)C";
-    	String[] expectedFGs = new String[] {"C=C", ""};
+    	String[] expectedFGs = new String[] {"C=C", "[R]C(=O)N([R])N([R])C(=O)[R]"};
     	testFind(moleculeSmiles, expectedFGs);
 	}
 	
@@ -232,6 +232,20 @@ public class ErtlFunctionalGroupsFinderTest extends CDKTestCase {
 	public void testFindExtraS() throws Exception {
 		String moleculeSmiles = "SCCSCC=S";
     	String[] expectedFGs = new String[] {"HS[R]", "[R]S[R]", "[C]=S"};
+    	testFind(moleculeSmiles, expectedFGs);
+	}
+	
+	@Test
+	public void testFindExtraRRings1() throws Exception {
+		String moleculeSmiles = "C1N=CC=N1"; // avoid ring with X1-R-X2
+    	String[] expectedFGs = new String[] {"[R]\\N=C\\C=N\\[R]"};
+    	testFind(moleculeSmiles, expectedFGs);
+	}
+	
+	@Test
+	public void testFindExtraRRings2() throws Exception {
+		String moleculeSmiles = "C1CN=CNO1"; // avoid ring with X1-R-R-X2
+    	String[] expectedFGs = new String[] {"[R]ON([R])\\C=N\\[R]"};
     	testFind(moleculeSmiles, expectedFGs);
 	}
 	

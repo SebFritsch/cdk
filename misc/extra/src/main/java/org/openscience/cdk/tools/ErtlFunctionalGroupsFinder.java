@@ -4,11 +4,13 @@ package org.openscience.cdk.tools;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
+import java.util.Set;
 
 import org.openscience.cdk.Atom;
 import org.openscience.cdk.PseudoAtom;
@@ -474,6 +476,7 @@ public class ErtlFunctionalGroupsFinder {
     		for(IAtom atomToRemove : atomsToRemove) {
     			fGroup.removeAtom(atomToRemove);
     		}
+    		checkAndResolveRCycles(fGroup);
     	}
     	
     	log.debug("########## Generalization of functional groups completed. ##########");
@@ -550,5 +553,43 @@ public class ErtlFunctionalGroupsFinder {
 		rAtom.setAttachPointNum(1);
 		rAtom.setImplicitHydrogenCount(0);
 		return rAtom;
+    }
+    
+    /**
+     * Checks generalised functional groups for ring-over-R-Atoms cases and resolves them (e.g. X1-R-X2 -> X1-R R-X2)
+     * 
+     * TODO: Optimise ?!
+     * 
+     * @param fGroup functional group
+     */
+    private static void checkAndResolveRCycles(IAtomContainer fGroup) {
+    	Set<IAtom> rAtomsInBondSet = new HashSet<>();
+    	for(Iterator<IBond> bondIter = fGroup.bonds().iterator(); bondIter.hasNext(); ) {
+    		IBond bond = bondIter.next();
+    		for(int atomInBondIdx = 0; atomInBondIdx < bond.getAtomCount(); atomInBondIdx++) {
+    			IAtom atomInBond = bond.getAtom(atomInBondIdx);
+    			// if atom in bond is an R-Atom
+    			if(atomInBond instanceof PseudoAtom) {
+    				if(rAtomsInBondSet.contains(atomInBond)) {
+    					// if R-Atom is already in another bond we needto interfere
+    					IAtom otherAtomInBond = bond.getOther(atomInBond);
+    					if(!(otherAtomInBond instanceof PseudoAtom)) {
+    						// if it is connected to a regular atom, swap the R-Atom in the bond for a newly created additional R-Atom
+    						IPseudoAtom additionalRAtom = createRAtom();
+    						fGroup.addAtom(additionalRAtom);
+    						bond.setAtom(additionalRAtom, atomInBondIdx);
+    					}
+    					else {
+    						// if the R-Atom is connected to another R-Atom, remove the bond
+    						fGroup.removeBond(atomInBond, otherAtomInBond);
+    					}
+    					continue;
+    				}
+    				else {
+    					rAtomsInBondSet.add(atomInBond);
+    				}
+    			}
+    		}
+    	}
     }
 }
