@@ -60,9 +60,10 @@ public class ErtlFunctionalGroupsFinder {
     
     private final Mode 		mode; 
     
-    private EdgeToBondMap 		bondMap;
-    private int[][] 			adjList;
-    private HashSet<Integer>	markedAtoms;
+    private EdgeToBondMap 				bondMap;
+    private int[][] 					adjList;
+    private HashSet<Integer>			markedAtoms;
+    private HashMap<Integer, Boolean>	aromaticHeteroAtoms; // <atomIdx, isInGroup>
     
     /**
      * Default constructor for FunctionalGroupsFinder.
@@ -130,6 +131,8 @@ public class ErtlFunctionalGroupsFinder {
     	
     	// store marked atoms
     	markedAtoms = new HashSet<>(Math.max((int) (molecule.getAtomCount()/.75f) + 1, 16));
+    	// store aromatic heteroatoms
+    	aromaticHeteroAtoms = new HashMap<>();
     	
     	for(int idx = 0; idx < molecule.getAtomCount(); idx++) {
     		// skip atoms that already got marked in a previous iteration
@@ -137,6 +140,13 @@ public class ErtlFunctionalGroupsFinder {
     			continue;
     		}
     		IAtom cAtom = molecule.getAtom(idx);
+    		// skip aromatic atoms and add aromatic heteroatoms to map
+    		if(cAtom.isAromatic()) {
+    			if(isHeteroatom(cAtom)) {
+    				aromaticHeteroAtoms.put(idx, false);
+    			}
+    			continue;
+    		}
     		int atomicNr = cAtom.getAtomicNumber();
     		
     		// NOTE: order assuming #Cs > #Hs > #HeteroAtoms
@@ -166,11 +176,13 @@ public class ErtlFunctionalGroupsFinder {
     						|| connectedAtom.getAtomicNumber() == 8
     						|| connectedAtom.getAtomicNumber() == 16)
     						&& connectedBond.getOrder() == Order.SINGLE){
-    					// set the connected O/N/S atom as marked
-    					log.debug(String.format("Marking Atom #%d (%s) - Met condition 1", connectedIdx, connectedAtom.getSymbol()));
-    					markedAtoms.add(connectedIdx);
-    					// if "acetal C" (2+ O/N/S in single bonds connected to sp3-C)... [CONDITION 2.3]
+    					// if connected O/N/S is not aromatic...
     					if(!connectedAtom.isAromatic()) {
+    						// set the connected O/N/S atom as marked
+    						log.debug(String.format("Marking Atom #%d (%s) - Met condition 1", connectedIdx, connectedAtom.getSymbol()));
+    						markedAtoms.add(connectedIdx);
+    						
+    						// if "acetal C" (2+ O/N/S in single bonds connected to sp3-C)... [CONDITION 2.3]
     						boolean isAllSingleBonds = true;
     						for(int connectedInSphere2Idx : adjList[connectedIdx]) {
     							IBond sphere2Bond = bondMap.get(connectedIdx, connectedInSphere2Idx);
@@ -323,6 +335,14 @@ public class ErtlFunctionalGroupsFinder {
     				
     				log.debug(String.format("	visited env. C atom: #%d (%s), type: %s", idx, currentAtom.getSymbol(), isParentC ? "C_ON_C" : "C_ON_HETEROATOM"));
     			}
+    			// if we find an aromatic heteroatom
+    			//TODO isHeteroatom should not be necessary?!
+    			else if(isHeteroatom(currentAtom) && currentAtom.isAromatic()) {
+    				// add its index to the functional group
+    				fGroupIndices.add(idx);
+    				// note that this aromatic heteroatom has been added to a group
+    				aromaticHeteroAtoms.put(idx, true);
+    			}
     			else {
     				log.debug(String.format("	visited non-marked atom: #%d (%s)", idx, currentAtom.getSymbol()));
     			}
@@ -341,6 +361,17 @@ public class ErtlFunctionalGroupsFinder {
     		// add functional group to list
     		functionalGroups.add(fGroup);
     	}
+    	// extract aromatic heteroatoms that are not connected to an FG as single atoms
+    	for(int idx : aromaticHeteroAtoms.keySet()) {
+    		if(!aromaticHeteroAtoms.get(idx)) {
+    			log.debug("Extracting single aromatic heteroatom by atom index: ", idx);
+    			IAtomContainer fGroup = extractGroupByIndices(molecule, new int[] {idx});
+        		IDCreator.createIDs(fGroup);
+        		functionalGroups.add(fGroup);
+    		}
+    	}
+    	
+    	
     	log.debug(String.format("########## Found & extracted %d functional groups. ##########", functionalGroups.size()));
     	
     	return functionalGroups;
@@ -461,6 +492,13 @@ public class ErtlFunctionalGroupsFinder {
     			else if(isHeteroatom(atom)){
     				if(atom.getImplicitHydrogenCount() != null) {
     					int rAtomsToAdd = atom.getImplicitHydrogenCount();
+    					if(atom.getAtomicNumber() == 8 || isSecAmineOrSimpleThiol) {
+    						rAtomsToAdd = 0;
+    						restoreExplicitHydrogens(fGroup, atom);
+    					}
+    					else {
+    						atom.setImplicitHydrogenCount(0);
+    					}
     					for(int i = 0; i < rAtomsToAdd; i++) {
     						IPseudoAtom rAtom = createRAtom();
     						IBond bond = atom.getBuilder().newBond();
