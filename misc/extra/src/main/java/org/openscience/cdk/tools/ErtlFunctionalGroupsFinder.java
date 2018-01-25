@@ -408,16 +408,16 @@ public class ErtlFunctionalGroupsFinder {
     		
     		if(atomCount == 2) {
     			IBond bond = fGroup.bonds().iterator().next();
-    			if(bond.getOrder() == Order.SINGLE) {
-    				int atomicNumberSum = bond.getBegin().getAtomicNumber() + bond.getEnd().getAtomicNumber();
-    				switch(atomicNumberSum) {
-    				case 13: 	isSingleN = true; // C-N
-    				break;
-    				case 14:	isSingleO = true; // C-O
-    				break;
-    				case 22:	isSecAmineOrSimpleThiol = true; // C-S
-    				break;
-    				}
+    			int atomicNumberSum = bond.getBegin().getAtomicNumber() + bond.getEnd().getAtomicNumber();
+    			switch(atomicNumberSum) {
+    			case 13: 	isSingleN = true; // C-N
+    			break;
+    			case 14:	isSingleO = true; // C-O
+    			break;
+    			case 22:	if(bond.getOrder() == Order.SINGLE) {
+    							isSecAmineOrSimpleThiol = true; // C-S
+    						}
+    			break;
     			}
     		}
     		else if(atomCount == 3) {
