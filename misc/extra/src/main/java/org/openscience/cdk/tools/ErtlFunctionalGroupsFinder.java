@@ -13,6 +13,7 @@ import java.util.Queue;
 import java.util.Set;
 
 import org.openscience.cdk.Atom;
+import org.openscience.cdk.AtomContainer;
 import org.openscience.cdk.PseudoAtom;
 import org.openscience.cdk.graph.GraphUtil;
 import org.openscience.cdk.graph.GraphUtil.EdgeToBondMap;
@@ -46,12 +47,20 @@ public class ErtlFunctionalGroupsFinder {
 	/**
 	 * Defines whether an environmental C is connected to a heteroatom or another C.
 	 */
-	private static enum EnvironmentalCType{ C_ON_HETEROATOM, C_ON_C };
+	//private static enum EnvironmentalCType{ C_ON_HETEROATOM, C_ON_C, CARBONYL_C};
+	private static enum EnvironmentalCType{ C_ON_HETEROATOM, C_ON_C};
+	
+	private static enum searchParentType{HETEROATOM, C, CARBONYL_C};
 	
 	/**
 	 * Flag to mark environmental C's in not-yet-generalized functional groups.
 	 */
 	private final static String ENVIRONMENTAL_C_FLAG = "ENVIRONMENTAL_C"; 
+	
+	/**
+	 * Flag to mark carbons in carbonyl groups.
+	 */
+	private final static String CARBONYL_C_FLAG = "CARBONYL_C"; 
     
     /**
      * Initial size of the collections containing each functional group. 
@@ -169,6 +178,14 @@ public class ErtlFunctionalGroupsFinder {
     					// set the current atom as marked and break out of connected atoms
     					log.debug(String.format("Marking Atom #%d (%s) - Met condition 2.1/2.2", idx, cAtom.getSymbol())); 
     					isMarked = true;
+    					
+    					
+    					if(connectedAtom.getAtomicNumber() == 8 && connectedBond.getOrder() == Order.DOUBLE && adjList[idx].length == 3) {
+    						log.debug("                     - was flagged as Carbonly-C");
+    						cAtom.setProperty(CARBONYL_C_FLAG, true);
+    					}
+    					
+    					
     					break;
     				}
     				// if connected to O/N/S in single bond...
@@ -316,7 +333,8 @@ public class ErtlFunctionalGroupsFinder {
     					if(!visited[connectedIdx]) {
     						queue.add(connectedIdx);
     						if(mode != Mode.NO_GENERALIZATION) {
-    							isParentCQueue.add(currentAtom.getAtomicNumber() == 6);
+    							//isParentCQueue.add(currentAtom.getAtomicNumber() == 6);
+    							isParentCQueue.add(currentAtom.getAtomicNumber() == 6 && currentAtom.getProperty(CARBONYL_C_FLAG) != null);
     						}
     						visited[connectedIdx] = true;
     					}
@@ -462,12 +480,15 @@ public class ErtlFunctionalGroupsFinder {
 //    					IAtom connectedC = atom.bonds().iterator().next().getOther(atom);
     					IAtom connectedC = fGroup.getConnectedBondsList(atom).get(0).getOther(atom);
     					boolean isCarbonylC = false;
-    					for(IBond bond : fGroup.getConnectedBondsList(connectedC)) {
-    						if(bond.getOrder() == Order.DOUBLE && bond.getBegin().getAtomicNumber() + bond.getEnd().getAtomicNumber() == 14) {
-    							isCarbonylC = true;
-    							break;
-    						}
-    					}
+//    					for(IBond bond : fGroup.getConnectedBondsList(connectedC)) {
+//    						if(bond.getOrder() == Order.DOUBLE && bond.getBegin().getAtomicNumber() + bond.getEnd().getAtomicNumber() == 14) {
+//    							log.debug("	found env. C (type CARBONLY_C)...");
+//    							isCarbonylC = true;
+//    							type = EnvironmentalCType.CARBONYL_C;
+//    							atom.setProperty(ENVIRONMENTAL_C_FLAG, type);
+//    							break;
+//    						}
+//    					}
     					if(!isCarbonylC) {
     						log.debug("	removing env. C (type C_ON_C)...");
     						atomsToRemove.add(atom);
@@ -546,6 +567,31 @@ public class ErtlFunctionalGroupsFinder {
          return extract;
     }
     
+    public IAtomContainer extractGroupByIndicesV2(IAtomContainer molecule, int... atomIndices) throws CloneNotSupportedException {
+    	// copy-paste from AtomContainerManipulator
+    	//int
+    	IAtomContainer group = (IAtomContainer) molecule.clone();
+        int numberOfAtoms = group.getAtomCount();
+        IAtom[] atoms = new IAtom[numberOfAtoms];
+        for (int atomIndex = 0; atomIndex < numberOfAtoms; atomIndex++) {
+            atoms[atomIndex] = group.getAtom(atomIndex);
+        }
+        
+        Arrays.sort(atomIndices);
+        for (int index = 0; index < numberOfAtoms; index++) {
+            if (Arrays.binarySearch(atomIndices, index) < 0) {
+                IAtom atom = atoms[index];
+                group.removeAtom(atom);
+            }
+        }
+        
+        // map alt->neu
+        
+        
+        
+        return group;
+    }
+    
     /**
      * Returns true if an atom is a heteroatom (not hydrogen or carbon).
      * 
@@ -609,13 +655,21 @@ public class ErtlFunctionalGroupsFinder {
     			// if atom in bond is an R-Atom
     			if(atomInBond instanceof PseudoAtom) {
     				if(rAtomsInBondSet.contains(atomInBond)) {
-    					// if R-Atom is already in another bond we needto interfere
+    					// if R-Atom is already in another bond we need to interfere
     					IAtom otherAtomInBond = bond.getOther(atomInBond);
     					if(!(otherAtomInBond instanceof PseudoAtom)) {
-    						// if it is connected to a regular atom, swap the R-Atom in the bond for a newly created additional R-Atom
-    						IPseudoAtom additionalRAtom = createRAtom();
-    						fGroup.addAtom(additionalRAtom);
-    						bond.setAtom(additionalRAtom, atomInBondIdx);
+    						if(!(isHeteroatom(atomInBond) || atomInBond.getProperty(CARBONYL_C_FLAG) != null))
+    						{
+    							// if it is connected to a regular atom, swap the R-Atom in the bond for a newly created additional R-Atom
+    							IPseudoAtom additionalRAtom = createRAtom();
+    							fGroup.addAtom(additionalRAtom);
+    							bond.setAtom(additionalRAtom, atomInBondIdx);
+    						}
+    						else {
+    							fGroup.removeBond(atomInBond, otherAtomInBond);
+    						}
+    						
+    						
     					}
     					else {
     						// if the R-Atom is connected to another R-Atom, remove the bond

@@ -189,7 +189,10 @@ public class ErtlFunctionalGroupsFinderTest extends CDKTestCase {
 	@Test
 	public void testFind15() throws Exception {
 		String moleculeSmiles = "C[C@@H]1CN(C[C@H](C)N1)c2c(F)c(N)c3C(=O)C(=CN(C4CC4)c3c2F)C(=O)O";
-    	String[] expectedFGs = new String[] {"[R]N([R])[R]", "[R]N([H])[R]", "[R]F", "[c]N(H)H", "HOC(=O)\\C(=C/N([R])[R])\\C(=O)[R]", "[R]F"};
+		// for electron donation models: cdk/AllowingExocyclic, piBonds
+//    	String[] expectedFGs = new String[] {"[R]N([R])[R]", "[R]N([H])[R]", "[R]F", "[c]N(H)H", "HOC(=O)\\C(=C/N([R])[R])\\C(=O)[R]", "[R]F"};
+    	// for daylight electron donation model
+    	String[] expectedFGs = new String[] {"[R]N([R])[R]", "[R]N([H])[R]", "[R]F", "[c]N(H)H", "[c]=O", "[R]F", "[R]C(=O)OH", "[n]"};
     	testFind(moleculeSmiles, expectedFGs);
 	}
 	
@@ -227,7 +230,10 @@ public class ErtlFunctionalGroupsFinderTest extends CDKTestCase {
 	@Test
 	public void testFind20() throws Exception {
 		String moleculeSmiles = "N[C@@H]1CCCCN(C1)c2c(Cl)cc3C(=O)C(=CN(C4CC4)c3c2Cl)C(=O)O";
-    	String[] expectedFGs = new String[] {"[C]N([H])[H]", "[R]N([R])[R]", "[R]Cl" , "HOC(=O)C(=[C]N([R])[R])C(=O)[R]", "[R]Cl"};
+		// for electron donation models: cdk/AllowingExocyclic, piBonds
+//    	String[] expectedFGs = new String[] {"[C]N([H])[H]", "[R]N([R])[R]", "[R]Cl" , "HOC(=O)C(=[C]N([R])[R])C(=O)[R]", "[R]Cl"};
+    	// for daylight electron donation model
+    	String[] expectedFGs = new String[] {"[C]N([H])[H]", "[R]N([R])[R]", "[R]Cl" , "[c]=O", "[R]Cl", "[R]C(=O)OH", "[n]"};
     	testFind(moleculeSmiles, expectedFGs);
 	}
 	
@@ -235,6 +241,20 @@ public class ErtlFunctionalGroupsFinderTest extends CDKTestCase {
 	public void testFindExtraS() throws Exception {
 		String moleculeSmiles = "SCCSCC=S";
     	String[] expectedFGs = new String[] {"HS[R]", "[R]S[R]", "[C]=S"};
+    	testFind(moleculeSmiles, expectedFGs);
+	}
+	
+	@Test
+	public void testFindExtraRNR() throws Exception {
+		String moleculeSmiles = "CCCCN=CCCC";
+    	String[] expectedFGs = new String[] {"[C]=N[R]"};
+    	testFind(moleculeSmiles, expectedFGs);
+	}
+	
+	@Test
+	public void testFindExtraPyridine() throws Exception {
+		String moleculeSmiles = "c1ccncc1";
+    	String[] expectedFGs = new String[] {"[n]"};
     	testFind(moleculeSmiles, expectedFGs);
 	}
 	
@@ -286,17 +306,19 @@ public class ErtlFunctionalGroupsFinderTest extends CDKTestCase {
     	//testFind15 = Case #2
     	// OUTCOME: different result with dalight() TODO doc
     	String moleculeSmiles15 = "C[C@@H]1CN(C[C@H](C)N1)c2c(F)c(N)c3C(=O)C(=CN(C4CC4)c3c2F)C(=O)O";
-    	String[] expectedFGs15 = new String[] {"[R]N([R])[R]", "[R]N([H])[R]", "[R]F", "C_ar-NH2", "[R]OC(=O)\\C(=C/N([R])[R])\\C(=O)[R]", "[R]F"};
+    	//String[] expectedFGs15 = new String[] {"[R]N([R])[R]", "[R]N([H])[R]", "[R]F", "[c]N(H)H", "HOC(=O)\\C(=C/N([R])[R])\\C(=O)[R]", "[R]F"};
+    	String[] expectedFGs15 = new String[] {"[R]N([R])[R]", "[R]N([H])[R]", "[R]F", "[c]N(H)H", "HOC(=O)\\C(=C/N([R])[R])\\C(=O)[R]", "[R]F","", ""};
     	// testFind20 = Case #4
 		// OUTCOME: different result with daylight()! TODO doc
 		String moleculeSmiles20 = "N[C@@H]1CCCCN(C1)c2c(Cl)cc3C(=O)C(=CN(C4CC4)c3c2Cl)C(=O)O";
-    	String[] expectedFGs20 = new String[] {"[C]N([H])[H]", "[R]N([R])[R]", "[R]Cl" , "[R]OC(=O)C(=[C]N([R])[R])C(=O)[R]", "[R]Cl"};
+    	String[] expectedFGs20 = new String[] {"[C]N([H])[H]", "[R]N([R])[R]", "[R]Cl" , "HOC(=O)C(=[C]N([R])[R])C(=O)[R]", "[R]Cl"};
     	
     	testFind(moleculeSmiles15, expectedFGs15, new Aromaticity(ElectronDonation.daylight(), Cycles.all()));
 	}
 	
 	private void testFind(String moleculeSmiles, String[] fGStrings) throws Exception {
-		testFind(moleculeSmiles, fGStrings, Aromaticity.cdkLegacy());
+		//testFind(moleculeSmiles, fGStrings, Aromaticity.cdkLegacy());
+		testFind(moleculeSmiles, fGStrings, new Aromaticity(ElectronDonation.daylight(), Cycles.all()));
 	}
 	
 	private void testFind(String moleculeSmiles, String[] fGStrings, Aromaticity aromaticity) throws Exception {
@@ -372,10 +394,12 @@ public class ErtlFunctionalGroupsFinderTest extends CDKTestCase {
 		List<List<IAtomContainer>> expectedFGs = new LinkedList<>();
 		
 		SmilesParser smilesParser = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+		Aromaticity aromaticity = new Aromaticity(ElectronDonation.daylight(), Cycles.all());
 		for(String smiles : moleculeSmilesList) {
 			IAtomContainer mol = smilesParser.parseSmiles(smiles);
 			AtomContainerManipulator.percieveAtomTypesAndConfigureAtoms(mol);
-			Aromaticity.cdkLegacy().apply(mol);
+			//Aromaticity.cdkLegacy().apply(mol);
+			aromaticity.apply(mol);
 			molecules.add(mol);
 		}
 		
@@ -426,7 +450,7 @@ public class ErtlFunctionalGroupsFinderTest extends CDKTestCase {
 	public void testChEBI_lite_3star() throws Exception {
 		List<IAtomContainer> molecules = new LinkedList<>();
 		//String filename = "data/mdl/ChEBI/ChEBI_lite_3star.sdf";
-		String filename = "C:/Users/ETPCO/Lokal Documents/ChEBI/ChEBI_lite_3star_minicrop.sdf";
+		String filename = "C:/Users/ETPCO/Lokal Documents/ChEBI/ChEBI_lite_3star.sdf";
 		//String filename = "data/mdl/BremserPredictionTest.mol";
         //InputStream ins = this.getClass().getClassLoader().getResourceAsStream(filename);
 		InputStream in = new FileInputStream(filename);
@@ -550,18 +574,27 @@ public class ErtlFunctionalGroupsFinderTest extends CDKTestCase {
         List<IAtomContainer> allFGs = new LinkedList<>();
         ErtlFunctionalGroupsFinder fgFinder = new ErtlFunctionalGroupsFinder();
         int aCCounter = 0;
+        int noFGsFoundConter = 0;
+        long startTime = System.currentTimeMillis();
         for(IAtomContainer aC : molecules) {
             fgFinder.find(aC);
             fgFinder.markAtoms(aC);
             List<IAtomContainer> fGs = fgFinder.extractGroups(aC);
             fGs = fgFinder.generalizeEnvironments(fGs);
-            allFGs.addAll(fGs);
+//            if(fGs.isEmpty()) {
+//            	noFGsFoundConter++;
+//            }
+//            else {
+//            	allFGs.addAll(fGs);
+//            }
             
-            aCCounter++;
-        	if(aCCounter % 1000 == 0)
-        		System.out.println(aCCounter + "/ "+ molecules.size() +"\r");
+//            aCCounter++;
+//        	if(aCCounter % 1000 == 0)
+//        		System.out.println(aCCounter + "/ "+ molecules.size() +"\r");
         }
-        System.out.println("######## processing done ##########");
+        long endTime = System.currentTimeMillis();
+        System.out.println("######## processing done (took " + (endTime-startTime)/1000 + " s) ##########");
+        System.out.println("# of compounds where no FG could be found: " + noFGsFoundConter);
         
         //printMostCommonFunctionalGroupsPatternMatching(allFGs);
         printMostCommonFunctionalGroupsUniqueSmiles(allFGs);
@@ -1278,6 +1311,8 @@ public class ErtlFunctionalGroupsFinderTest extends CDKTestCase {
         	try {
         		SmilesParser smilesParser = new SmilesParser(DefaultChemObjectBuilder.getInstance());
         		try {
+        			if(string.equals("[c]=O"))
+        				smilesParser.kekulise(false);
         			container = smilesParser.parseSmiles(string);
         		}
         		catch(InvalidSmilesException e) {
