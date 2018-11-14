@@ -113,7 +113,7 @@ public class SilentChemObjectBuilder implements IChemObjectBuilder {
     }
 
     private static final boolean CDK_LEGACY_AC
-        = getSystemProp("CdkUseLegacyAtomContainer", true);
+        = getSystemProp("CdkUseLegacyAtomContainer", false);
 
     private static volatile IChemObjectBuilder instance = null;
     private static final Object                LOCK     = new Object();
@@ -141,9 +141,9 @@ public class SilentChemObjectBuilder implements IChemObjectBuilder {
 
         // atom containers
         if (CDK_LEGACY_AC) {
+            System.err.println("[WARN] Using the old AtomContainer implementation.");
             factory.register(IAtomContainer.class, AtomContainer.class);
         } else {
-            System.err.println("[INFO] Using the new AtomContainer implementation.");
             factory.register(IAtomContainer.class, AtomContainer2.class);
         }
 
