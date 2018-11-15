@@ -21,6 +21,7 @@ import org.junit.Assume;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.openscience.cdk.Atom;
+import org.openscience.cdk.CDKConstants;
 import org.openscience.cdk.CDKTestCase;
 import org.openscience.cdk.DefaultChemObjectBuilder;
 import org.openscience.cdk.aromaticity.Aromaticity;
@@ -212,7 +213,19 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
     private final String GENERALIZATION_SETTINGS_KEY_ADDITION = "Generalized";
     
     /**
-     * Seperator for the output file's values
+     * This string will be added to an original settings key (only for exception logging!) when a molecule consists of two or 
+     * more unconnected structures and the biggest one is chosen for analysis in the preprocessing
+     */
+    private final String FRAGMENT_SELECTED_SETTINGS_KEY_ADDITION = "(biggest fragment selected)";
+    
+    /**
+     * This string will be added to an original settings key (only for exception logging!) when a molecule contains charged atoms
+     * and these charges are neutralized in the preprocessing
+     */
+    private final String NEUTRALIZED_SETTINGS_KEY_ADDITION = "(neutralized)";
+    
+    /**
+     * Separator for the output file's values
      */
     private final String OUTPUT_FILE_SEPERATOR = ",";
     
@@ -325,9 +338,14 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
     private MoleculeHashGenerator molHashGenerator;
     
     /**
-     * Instance of the ErtlFunctionalGroupsFinder
+     * Instance of the ErtlFunctionalGroupsFinder with generalization turned off
      */
-    private ErtlFunctionalGroupsFinder ertlFGFinder;
+    private ErtlFunctionalGroupsFinder ertlFGFinderGenOff;
+    
+    /**
+     * Instance of the ErtlFunctionalGroupsFinder with generalization turned on
+     */
+    private ErtlFunctionalGroupsFinder ertlFGFinderGenOn;
     
     /**
      * Master HashMap for storing results; Its keys are the hash codes produced by the MoleculeHashGenerator for the 
@@ -582,7 +600,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
      * the output and log files' names for association of test and files
      * @throws java.lang.Exception if one the FileWriter instances can not be instantiated or more than 
      * Integer.MAX-VALUE tests are to be run this minute (error in the naming of output files) or an unexpected 
-     * exception occures.
+     * exception occurs.
      */
     private void initialize(String aFileName, String aTestIdentifier) throws Exception {
         System.out.println("\n#########################################################################\n");
@@ -684,8 +702,8 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
                 .charged()
                 .orbital()
                 .molecular();
-        //Generalization is later done by invoking ErtlFunctionalGroupsFinder.expandGeneralizedEnvironments()
-        this.ertlFGFinder = new ErtlFunctionalGroupsFinder(Mode.NO_GENERALIZATION);
+        this.ertlFGFinderGenOff = new ErtlFunctionalGroupsFinder(Mode.NO_GENERALIZATION);
+        this.ertlFGFinderGenOn = new ErtlFunctionalGroupsFinder(Mode.DEFAULT);
         this.masterHashMap = new HashMap(this.MASTER_HASHMAP_INITIAL_CAPACITY, this.MASTER_HASHMAP_LOAD_FACTOR);
         this.settingsKeysList = new HashSet<>();
         this.exceptionsCounter = 0;
@@ -730,24 +748,28 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
         while (aReader.hasNext()) {
             tmpMoleculesCounter++;
             List<IAtomContainer> tmpFunctionalGroups;
+            List<IAtomContainer> tmpFunctionalGroupsGeneralized;
             IAtomContainer tmpMolecule = (IAtomContainer) aReader.next();
             if (tmpMolecule == null) {
                 break;
             }
-            String tmpCause = "";
+            String tmpSettingsKeyForLogging = aSettingsKey;
+            String tmpCauseForFiltering = "";
             IAtomContainer tmpOriginalMolecule = null;
             boolean tmpIsBiggestFragmentSelected = false;
             try {
                 //Filter molecules with atom or bond count zero
                 if (tmpMolecule.getAtomCount() == 0 || tmpMolecule.getBondCount() == 0) {
-                    tmpCause = "Atom or bond count 0";
+                    tmpCauseForFiltering = "Atom or bond count 0";
                     tmpFilteredMoleculesCounter++;
                     tmpNoAtomOrBondCounter++;
                     if (!this.areFilteredMoleculesLogged) {
-                        this.logFilteredMolecule(tmpMolecule, tmpFilteredMoleculesCounter, tmpCause);
+                        this.logFilteredMolecule(tmpMolecule, tmpFilteredMoleculesCounter, tmpCauseForFiltering);
                     }
                     continue;
                 }
+                //Remove s-groups ... they cause trouble in atomContainer.clone()(->SgroupManilupator.copy)
+                tmpMolecule.removeProperty(CDKConstants.CTAB_SGROUPS);
                 AtomContainerManipulator.percieveAtomTypesAndConfigureAtoms(tmpMolecule);
                 //Preprocessing: From structures containing two or more unconnected structures (e.g. ions) 
                 //choose the largest structure for analysis
@@ -762,6 +784,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
                         }
                     }
                     tmpIsBiggestFragmentSelected = true;
+                    tmpSettingsKeyForLogging += this.FRAGMENT_SELECTED_SETTINGS_KEY_ADDITION;
                     tmpOriginalMolecule = tmpMolecule.clone();
                     tmpMolecule = tmpBiggestFragment;
                 }
@@ -774,19 +797,20 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
                     }
                 }
                 if (tmpIsForbiddenAtomicNumberDetected) {
-                    tmpCause = "Contains one or more metal, metalloid or \"R\" atoms";
+                    tmpCauseForFiltering = "Contains one or more metal, metalloid or \"R\" atoms";
                     tmpFilteredMoleculesCounter++;
                     tmpMetallicCounter++;
                     if (!this.areFilteredMoleculesLogged) {
                         if (tmpIsBiggestFragmentSelected && tmpOriginalMolecule != null) {
-                            this.logFilteredMolecule(tmpOriginalMolecule, tmpFilteredMoleculesCounter, tmpCause);
+                            this.logFilteredMolecule(tmpOriginalMolecule, tmpFilteredMoleculesCounter, tmpCauseForFiltering);
                         } else {
-                            this.logFilteredMolecule(tmpMolecule, tmpFilteredMoleculesCounter, tmpCause);
+                            this.logFilteredMolecule(tmpMolecule, tmpFilteredMoleculesCounter, tmpCauseForFiltering);
                         }
                     }
                     continue;
                 }
                 //Preprocessing: Neutralize charges
+                boolean isAChargeNeutralized = false;
                 for (IAtom tmpAtom : tmpMolecule.atoms()) {
                     if (tmpAtom.getFormalCharge() != 0) {
                         tmpChargeCounter++;
@@ -798,60 +822,51 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
                             AtomTypeManipulator.configure(tmpAtom, tmpMatchedType);
                         }
                         tmpHAdder.addImplicitHydrogens(tmpMolecule, tmpAtom);
+                        if(!isAChargeNeutralized) {
+                            isAChargeNeutralized = true;
+                        }
                     }
                 }
+                if (isAChargeNeutralized) {
+                    tmpSettingsKeyForLogging += this.NEUTRALIZED_SETTINGS_KEY_ADDITION;
+                }
+                //Following lines will be altered for final release
                 //Now the analysis of functional groups:
                 anAromaticity.apply(tmpMolecule);
-                this.ertlFGFinder.find(tmpMolecule);
-                this.ertlFGFinder.markAtoms(tmpMolecule);
-                tmpFunctionalGroups = this.ertlFGFinder.extractGroups(tmpMolecule);
+                this.ertlFGFinderGenOff.find(tmpMolecule);
+                this.ertlFGFinderGenOff.markAtoms(tmpMolecule);
+                tmpFunctionalGroups = this.ertlFGFinderGenOff.extractGroups(tmpMolecule);
+                //Do the extraction again with activated generalization
+                tmpSettingsKeyForLogging += this.GENERALIZATION_SETTINGS_KEY_ADDITION;
+                //clone the original molecule before that or rather before first marking/extraction?
+                //this.ertlFGFinderGenOn.find(tmpMolecule); 
+                //this.ertlFGFinderGenOn.markAtoms(tmpMolecule);
+                //tmpFunctionalGroupsGeneralized = this.ertlFGFinderGenOn.extractGroups(tmpMolecule);
+                //Following lines will be omitted for final release and replaced by the lines above
+                List<IAtomContainer> tmpClonedFGs = new LinkedList<>();
+                for (IAtomContainer tmpFunctionalGroup : tmpFunctionalGroups) {
+                    tmpClonedFGs.add(tmpFunctionalGroup.clone());
+                }
+                tmpFunctionalGroupsGeneralized = this.ertlFGFinderGenOff.expandGeneralizedEnvironments(tmpClonedFGs);
             } catch (Exception anException) {
                 tmpSkippedMoleculesCounter++;
                 if (tmpIsBiggestFragmentSelected && tmpOriginalMolecule != null) {
-                    this.logException(anException, aSettingsKey, tmpOriginalMolecule);
+                    this.logException(anException, tmpSettingsKeyForLogging, tmpOriginalMolecule);
                 } else {
-                    this.logException(anException, aSettingsKey, tmpMolecule);
+                    this.logException(anException, tmpSettingsKeyForLogging, tmpMolecule);
                 }
                 continue;
             }
-            if (tmpFunctionalGroups == null || tmpFunctionalGroups.isEmpty()) {
+            if (!(tmpFunctionalGroups == null || tmpFunctionalGroups.isEmpty())) {
+                //Assumption: If a molecule does not have FGs without generalization it does not have FGs 
+                //with generalization either
+                this.addFunctionalGroupsToMasterMap(tmpFunctionalGroups, aSettingsKey, anAreMultiplesCounted);
+                this.addFunctionalGroupsToMasterMap(tmpFunctionalGroupsGeneralized, 
+                        aSettingsKey + this.GENERALIZATION_SETTINGS_KEY_ADDITION,
+                        anAreMultiplesCounted);
+            } else {
                 tmpNoFunctionalGroupsCounter++;
-                continue;
             }
-            this.addFunctionalGroupsToMasterMap(tmpFunctionalGroups, aSettingsKey, anAreMultiplesCounted);
-            //Generalize environments of the extracted functional groups
-            List<IAtomContainer> tmpFunctionalGroupsGeneralized = new LinkedList<>();
-            for (IAtomContainer tmpFunctionalGroup : tmpFunctionalGroups) {
-                try {
-                    tmpFunctionalGroupsGeneralized.add(tmpFunctionalGroup.clone());
-                } catch (CloneNotSupportedException aCloneNotSupportedException){
-                    if (tmpIsBiggestFragmentSelected && tmpOriginalMolecule != null) {
-                        this.logException(aCloneNotSupportedException, 
-                                aSettingsKey + " (Cloning one of the molecule's functional groups)", 
-                                tmpOriginalMolecule);
-                    } else {
-                        this.logException(aCloneNotSupportedException, 
-                                aSettingsKey + " (Cloning one of the molecule's functional groups)", 
-                                tmpMolecule);
-                    }
-                }
-            }
-            try {
-                tmpFunctionalGroupsGeneralized = this.ertlFGFinder.expandGeneralizedEnvironments(tmpFunctionalGroupsGeneralized);
-            } catch (NullPointerException anException) {
-                if (tmpIsBiggestFragmentSelected && tmpOriginalMolecule != null) {
-                    this.logException(anException, 
-                            aSettingsKey + " (Generalizing the molecule's functional groups)", 
-                            tmpOriginalMolecule);
-                } else {
-                    this.logException(anException, 
-                            aSettingsKey + " (Generalizing the molecule's functional groups)", 
-                            tmpMolecule);
-                }
-            }
-            this.addFunctionalGroupsToMasterMap(tmpFunctionalGroupsGeneralized, 
-                    aSettingsKey + this.GENERALIZATION_SETTINGS_KEY_ADDITION,
-                    anAreMultiplesCounted);
         }
         //Since the filters remain the same in every iteration filtered molecules must be logged only once
         //(assuming that only one SD file is analyzed in a test)
@@ -970,7 +985,8 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
                         }
                     }
                     tmpAtom.setIsAromatic(false);
-                    if (tmpAtom instanceof IPseudoAtom) {
+                    if (tmpAtom instanceof IPseudoAtom && "R".equals(((IPseudoAtom)tmpAtom).getLabel())) {  
+                        //second condition: see creation of R atoms in ErtlFunctionalGroupsFinder
                         IAtom tmpReplacementAtom = new Atom("Es");
                         Integer tmpImplicitHydrogenCount = tmpAtom.getImplicitHydrogenCount();
                         AtomContainerManipulator.replaceAtomByAtom(tmpFunctionalGroup, tmpAtom, tmpReplacementAtom);
@@ -1025,7 +1041,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
         try {
             this.filteredMoleculesPrintWriter.println("SMILES code: " + this.smilesGenerator.create(aMolecule));
         } catch (CDKException | NullPointerException anException){
-            this.filteredMoleculesPrintWriter.println("SMILES code: " +this.SMILES_CODE_PLACEHOLDER);
+            this.filteredMoleculesPrintWriter.println("SMILES code: " + this.SMILES_CODE_PLACEHOLDER);
         }
         String tmpChebiName = aMolecule.getProperty("ChEBI Name");
         if (tmpChebiName != null)
@@ -1058,7 +1074,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
         try {
             this.exceptionsPrintWriter.println("SMILES code: " + this.smilesGenerator.create(aMolecule));
         } catch (CDKException | NullPointerException aNewException){
-            this.exceptionsPrintWriter.println("SMILES code: " +this.SMILES_CODE_PLACEHOLDER);
+            this.exceptionsPrintWriter.println("SMILES code: " + this.SMILES_CODE_PLACEHOLDER);
         }
         String tmpChebiName = aMolecule.getProperty("ChEBI Name");
         if (tmpChebiName != null)
