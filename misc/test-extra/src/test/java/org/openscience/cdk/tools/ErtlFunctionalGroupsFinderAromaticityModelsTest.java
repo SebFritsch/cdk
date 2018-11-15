@@ -151,6 +151,11 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
     private final String ATOMCONTAINER_KEY = "molecule";
     
     /**
+     * 
+     */
+    private final String MOLECULE_OF_ORIGIN_KEY = "origin";
+    
+    /**
      * All allowed atomic numbers to pass to the ErtlFunctionalGroupsFinder; 
      * String will be split and resulting integers passed to a set
      */
@@ -233,7 +238,12 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
      * Placeholder String for every functional group's SMILES code whose real SMILES representation could not be 
      * generated
      */
-    private final String SMILES_CODE_PLACEHOLDER = "SMILES code could not be created.";
+    private final String SMILES_CODE_PLACEHOLDER = "SMILES code could not be created";
+    
+    /**
+     * 
+     */
+    private final String MOLECULE_OF_ORIGIN_ID_PLACEHOLDER = "no id for molecule of origin";
     //</editor-fold>
     
     //<editor-fold defaultstate="collapsed" desc="Pseudo-SMILES code">
@@ -694,12 +704,10 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
         System.out.println("\tThe absolute functional groups frequencies will be written to: " + tmpOutputFile.getName());
         
         this.smilesGenerator = new SmilesGenerator(this.SMILES_GENERATOR_OUTPUT_MODE);
-        //examplary fast setup of the MoleculeHashGenerator
+        //examplary fast setup of the MoleculeHashGenerator without isotopic() and charged()
         this.molHashGenerator = new HashGeneratorMaker()
                 .depth(8)
                 .elemental()
-                .isotopic()
-                .charged()
                 .orbital()
                 .molecular();
         this.ertlFGFinderGenOff = new ErtlFunctionalGroupsFinder(Mode.NO_GENERALIZATION);
@@ -754,10 +762,12 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
                 break;
             }
             String tmpSettingsKeyForLogging = aSettingsKey;
-            String tmpCauseForFiltering = "";
             IAtomContainer tmpOriginalMolecule = null;
-            boolean tmpIsBiggestFragmentSelected = false;
             try {
+                String tmpCauseForFiltering = "";
+                //Remove s-groups ... they cause trouble in atomContainer.clone()(->SgroupManilupator.copy)
+                tmpMolecule.removeProperty(CDKConstants.CTAB_SGROUPS);
+                tmpOriginalMolecule = tmpMolecule.clone();
                 //Filter molecules with atom or bond count zero
                 if (tmpMolecule.getAtomCount() == 0 || tmpMolecule.getBondCount() == 0) {
                     tmpCauseForFiltering = "Atom or bond count 0";
@@ -768,8 +778,6 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
                     }
                     continue;
                 }
-                //Remove s-groups ... they cause trouble in atomContainer.clone()(->SgroupManilupator.copy)
-                tmpMolecule.removeProperty(CDKConstants.CTAB_SGROUPS);
                 AtomContainerManipulator.percieveAtomTypesAndConfigureAtoms(tmpMolecule);
                 //Preprocessing: From structures containing two or more unconnected structures (e.g. ions) 
                 //choose the largest structure for analysis
@@ -783,9 +791,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
                             tmpBiggestFragment = tmpFragment;
                         }
                     }
-                    tmpIsBiggestFragmentSelected = true;
                     tmpSettingsKeyForLogging += this.FRAGMENT_SELECTED_SETTINGS_KEY_ADDITION;
-                    tmpOriginalMolecule = tmpMolecule.clone();
                     tmpMolecule = tmpBiggestFragment;
                 }
                 //Filter molecules containing metals, metalloids or "R" atoms
@@ -801,7 +807,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
                     tmpFilteredMoleculesCounter++;
                     tmpMetallicCounter++;
                     if (!this.areFilteredMoleculesLogged) {
-                        if (tmpIsBiggestFragmentSelected && tmpOriginalMolecule != null) {
+                        if (tmpOriginalMolecule != null) {
                             this.logFilteredMolecule(tmpOriginalMolecule, tmpFilteredMoleculesCounter, tmpCauseForFiltering);
                         } else {
                             this.logFilteredMolecule(tmpMolecule, tmpFilteredMoleculesCounter, tmpCauseForFiltering);
@@ -850,7 +856,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
                 tmpFunctionalGroupsGeneralized = this.ertlFGFinderGenOff.expandGeneralizedEnvironments(tmpClonedFGs);
             } catch (Exception anException) {
                 tmpSkippedMoleculesCounter++;
-                if (tmpIsBiggestFragmentSelected && tmpOriginalMolecule != null) {
+                if (tmpOriginalMolecule != null) {
                     this.logException(anException, tmpSettingsKeyForLogging, tmpOriginalMolecule);
                 } else {
                     this.logException(anException, tmpSettingsKeyForLogging, tmpMolecule);
@@ -860,10 +866,14 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
             if (!(tmpFunctionalGroups == null || tmpFunctionalGroups.isEmpty())) {
                 //Assumption: If a molecule does not have FGs without generalization it does not have FGs 
                 //with generalization either
-                this.addFunctionalGroupsToMasterMap(tmpFunctionalGroups, aSettingsKey, anAreMultiplesCounted);
+                this.addFunctionalGroupsToMasterMap(tmpFunctionalGroups, 
+                        aSettingsKey, 
+                        anAreMultiplesCounted, 
+                        tmpOriginalMolecule);
                 this.addFunctionalGroupsToMasterMap(tmpFunctionalGroupsGeneralized, 
                         aSettingsKey + this.GENERALIZATION_SETTINGS_KEY_ADDITION,
-                        anAreMultiplesCounted);
+                        anAreMultiplesCounted, 
+                        tmpOriginalMolecule);
             } else {
                 tmpNoFunctionalGroupsCounter++;
             }
@@ -896,11 +906,14 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
      * @param aSettingsKey will be the key of the inner HashMap inside the master HashMap
      * @param anAreMultiplesCounted if false, functional groups that occur multiple times in aFunctionalGroupsList will 
      * only be entered once into the master Hashmap
+     * @param anFGContainingMolecule the molecule from which the functional groups originated; will be added to the 
+     * master Hashmap
      */
     private void addFunctionalGroupsToMasterMap(
             List<IAtomContainer> aFunctionalGroupsList, 
             String aSettingsKey, 
-            boolean anAreMultiplesCounted) {
+            boolean anAreMultiplesCounted,
+            IAtomContainer anFGContainingMolecule) {
         
         if (!this.settingsKeysList.contains(aSettingsKey)) {
             this.settingsKeysList.add(aSettingsKey);
@@ -928,6 +941,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
             } else {
                 HashMap tmpNewInnerMap = new HashMap(this.INNER_HASHMAPS_INITIAL_CAPACITY);
                 tmpNewInnerMap.put(this.ATOMCONTAINER_KEY, tmpFunctionalGroup);
+                tmpNewInnerMap.put(this.MOLECULE_OF_ORIGIN_KEY, anFGContainingMolecule);
                 tmpNewInnerMap.put(aSettingsKey, 1);
                 this.masterHashMap.put(tmpHashCode, tmpNewInnerMap);
             }
@@ -951,6 +965,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
         for (String tmpSettingsKey : this.settingsKeysList) {
             tmpFileHeader += this.OUTPUT_FILE_SEPERATOR + tmpSettingsKey;
         }
+        tmpFileHeader += this.OUTPUT_FILE_SEPERATOR + this.MOLECULE_OF_ORIGIN_KEY;
         this.dataOutputPrintWriter.println(tmpFileHeader);
         this.dataOutputPrintWriter.flush();
         Iterator tmpFunctionalGroupsIterator = this.masterHashMap.keySet().iterator();
@@ -1000,10 +1015,15 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
                 tmpPseudoSmilesCode = this.smilesGenerator.create(tmpFunctionalGroup);
                 tmpPseudoSmilesCode = tmpPseudoSmilesCode
                         .replaceAll("(\\[Es\\])", this.PSEUDO_SMILES_R_ATOM)
+                        .replaceAll("(Es)", this.PSEUDO_SMILES_R_ATOM)
                         .replaceAll("(\\[Ce\\])", this.PSEUDO_SMILES_AROMATIC_CARBON)
+                        .replaceAll("(Ce)", this.PSEUDO_SMILES_AROMATIC_CARBON)
                         .replaceAll("(\\[Nd\\])", this.PSEUDO_SMILES_AROMATIC_NITROGEN)
+                        .replaceAll("(Nd)", this.PSEUDO_SMILES_AROMATIC_NITROGEN)
                         .replaceAll("(\\[Sm\\])", this.PSEUDO_SMILES_AROMATIC_SULPHUR)
-                        .replaceAll("(\\[Os\\])", this.PSEUDO_SMILES_AROMATIC_OXYGEN);
+                        .replaceAll("(Sm)", this.PSEUDO_SMILES_AROMATIC_SULPHUR)
+                        .replaceAll("(\\[Os\\])", this.PSEUDO_SMILES_AROMATIC_OXYGEN)
+                        .replaceAll("(Os)", this.PSEUDO_SMILES_AROMATIC_OXYGEN);
             } catch (CDKException | NullPointerException anException) {
                 this.logException(anException, "Creating SMILES code, no settings", tmpFunctionalGroup);
                 tmpSmilesCode = this.SMILES_CODE_PLACEHOLDER;
@@ -1018,6 +1038,18 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
                 }
                 tmpRecord += this.OUTPUT_FILE_SEPERATOR + tmpInnerMap.get(tmpSettingsKey);
             }
+            
+            IAtomContainer tmpMoleculeOfOrigin = (IAtomContainer)tmpInnerMap.get(this.MOLECULE_OF_ORIGIN_KEY);
+            String tmpChebiId = tmpMoleculeOfOrigin.getProperty("ChEBI ID");
+            String tmpChemblId = tmpMoleculeOfOrigin.getProperty("chembl_id");
+            if (tmpChebiId != null) {
+                tmpRecord += this.OUTPUT_FILE_SEPERATOR + tmpChebiId;
+            } else if (tmpChemblId != null) {
+                tmpRecord += this.OUTPUT_FILE_SEPERATOR + tmpChemblId;
+            } else {
+                tmpRecord += this.OUTPUT_FILE_SEPERATOR + this.MOLECULE_OF_ORIGIN_ID_PLACEHOLDER;
+            }
+            
             this.dataOutputPrintWriter.println(tmpRecord);
             this.dataOutputPrintWriter.flush();
             tmpFunctionalGroupsIterator.remove();
