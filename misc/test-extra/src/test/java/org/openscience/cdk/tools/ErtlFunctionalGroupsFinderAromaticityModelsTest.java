@@ -141,7 +141,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
     private final String DATE_TIME_FORMAT_PATTERN = "uuuu_MM_dd_HH_mm";
     
     /**
-     * Seperator for file name segments (test identifier, file name, time stamp)
+     * Separator for file name segments (test identifier, file name, time stamp)
      */
     private final String FILE_NAME_ADDITION_SEPERATOR = "_";
     
@@ -151,9 +151,44 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
     private final String ATOMCONTAINER_KEY = "molecule";
     
     /**
-     * 
+     * Key for the master HashMap's inner maps under which to store the ChEBI or ChEMBL id of an exemplary molecule 
+     * that contains this functional group
      */
     private final String MOLECULE_OF_ORIGIN_KEY = "origin";
+    
+    //<editor-fold defaultstate="collapsed" desc="Concerning filtering and Preprocessing">
+    /**
+     * Key for setting an IAtomContainers property that specifies if the molecule consisted of one or more unconnected
+     * structures and the biggest of these structures was selected in preprocessing
+     */
+    private final String BIGGEST_FRAGMENT_SELECTED_PROPERTY_KEY = "biggest_fragment_was_selected";
+    
+    /**
+     * Key for setting an IAtomContainers property that specifies if the molecule contained charged atoms and these
+     * charges were neutralized in preprocessing
+     */
+    private final String CHARGES_NEUTRALIZED_PROPERTY_KEY = "charges_were_neutralized";
+    
+    /**
+     * Key for setting an IAtomContainers property that specifies if the molecule must be filtered
+     */
+    private final String MOLECULE_MUST_BE_FILTERED_PROPERTY_KEY = "molecule_must_be_filtered";
+    
+    /**
+     * Key for setting an IAtomContainers property that specifies why the molecule must be filtered
+     */
+    private final String CAUSE_FOR_FILTERING_PROPERTY_KEY = "filtering_cause";
+    
+    /**
+     * Message specifying that the atom or bond count of a molecule is zero.
+     */
+    private final String ATOM_OR_BOND_COUNT_ZERO = "Atom or bond count 0";
+    
+    /**
+     * Message specifying that a molecule contains not allowed atomic numbers.
+     */
+    private final String FORBIDDEN_ATOMIC_NUMBER = "Contains one or more metal, metalloid or \"R\" atoms";
+//</editor-fold>
     
     /**
      * All allowed atomic numbers to pass to the ErtlFunctionalGroupsFinder; 
@@ -268,7 +303,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
     private final String PSEUDO_SMILES_AROMATIC_OXYGEN = "O*";
     
     /**
-     * Pseudo SMILES representation of an undifined pseudo atom
+     * Pseudo SMILES representation of an undefined pseudo atom
      */
     private final String PSEUDO_SMILES_R_ATOM = "R";
     //</editor-fold>
@@ -311,14 +346,14 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
     private int exceptionsCounter;
     
     /**
-     * True if the filtered molecules were logged in the filtered molecules log file; This is only neccessary in the 
+     * True if the filtered molecules were logged in the filtered molecules log file; This is only necessary in the 
      * first iteration since the applied filters are the same in every iteration (assuming that in a single test
      * only one SD file is analyzed)
      */
     private boolean areFilteredMoleculesLogged;
     
     /**
-     * True if all operations in initialize() were successfull and the test is able to run
+     * True if all operations in initialize() were successful and the test is able to run
      */
     private boolean isTestAbleToRun;
     
@@ -445,10 +480,10 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
      * Test for analyzing ChEBI database for all four different aromaticity models supplied by the cdk: daylight, cdk, 
      * piBonds and cdkAllowingExocyclic;
      * <p>
-     * Difference to analyzeChebi(): If the same functional group occurres multiple times in the same molecule 
+     * Difference to analyzeChebi(): If the same functional group occurs multiple times in the same molecule 
      * it is counted only once
      * 
-     * @throws java.lang.Exception if initialize() throws an exception or an unexpected exception occures
+     * @throws java.lang.Exception if initialize() throws an exception or an unexpected exception occurs
      */
     @Test
     public void analyzeChebiNoMultiples() throws Exception {
@@ -499,7 +534,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
      * <p>
      * (Functional groups occurring multiple times in the same molecule are counted multiple times)
      * 
-     * @throws java.lang.Exception if initialize() throws an exception or an unexpected exception occures
+     * @throws java.lang.Exception if initialize() throws an exception or an unexpected exception occurs
      */
     @Ignore
     @Test
@@ -551,11 +586,11 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
      * <p>
      * (Functional groups occurring multiple times in the same molecule are counted multiple times)
      * 
-     * @throws java.lang.Exception if initialize() throws an exception or an unexpected exception occures
+     * @throws java.lang.Exception if initialize() throws an exception or an unexpected exception occurs
      */
     @Ignore
     @Test
-    public void cycleFinderTest() throws Exception {
+    public void analyzeCycleFinderDependency() throws Exception {
         this.initialize(this.CHEBI_SD_FILE_NAME, this.CYCLE_FINDER_TEST_IDENTIFIER);
         Assume.assumeTrue(this.isTestAbleToRun);
         
@@ -767,9 +802,38 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
                 String tmpCauseForFiltering = "";
                 //Remove s-groups ... they cause trouble in atomContainer.clone()(->SgroupManilupator.copy)
                 tmpMolecule.removeProperty(CDKConstants.CTAB_SGROUPS);
+                //Produce a clone of the original molecule for logging
                 tmpOriginalMolecule = tmpMolecule.clone();
+                //Apply filters and preprocessing
+                tmpMolecule = this.applyFiltersAndPreprocessing(tmpMolecule);
+                //Filter molecule if necessary
+                if (tmpMolecule.getProperty(this.MOLECULE_MUST_BE_FILTERED_PROPERTY_KEY)) {
+                    tmpCauseForFiltering = tmpMolecule.getProperty(this.CAUSE_FOR_FILTERING_PROPERTY_KEY);
+                    if (tmpCauseForFiltering.equals(this.ATOM_OR_BOND_COUNT_ZERO)) {
+                        tmpNoAtomOrBondCounter++;
+                    } else if (tmpCauseForFiltering.equals(this.FORBIDDEN_ATOMIC_NUMBER)) {
+                        tmpMetallicCounter++;
+                    }
+                    tmpFilteredMoleculesCounter++;
+                    if (!this.areFilteredMoleculesLogged) {
+                        this.logFilteredMolecule(tmpMolecule, tmpFilteredMoleculesCounter, tmpCauseForFiltering);
+                    }
+                    continue;
+                }
+                //Add according additions to the settings key for logging if the molecule was preprocessed
+                if (tmpMolecule.getProperty(this.BIGGEST_FRAGMENT_SELECTED_PROPERTY_KEY)) {
+                    tmpUnconnectedCounter++;
+                    tmpSettingsKeyForLogging += this.FRAGMENT_SELECTED_SETTINGS_KEY_ADDITION;
+                }
+                if (tmpMolecule.getProperty(this.CHARGES_NEUTRALIZED_PROPERTY_KEY)) {
+                    tmpChargeCounter++;
+                    tmpSettingsKeyForLogging += this.NEUTRALIZED_SETTINGS_KEY_ADDITION;
+                }
+                
+                /*######################################################################################################
                 //Filter molecules with atom or bond count zero
-                if (tmpMolecule.getAtomCount() == 0 || tmpMolecule.getBondCount() == 0) {
+                boolean tmpIsAtomOrBondCountZero = this.applyNoAtomOrBondFilter(tmpMolecule);
+                if (tmpIsAtomOrBondCountZero) {
                     tmpCauseForFiltering = "Atom or bond count 0";
                     tmpFilteredMoleculesCounter++;
                     tmpNoAtomOrBondCounter++;
@@ -782,26 +846,14 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
                 //Preprocessing: From structures containing two or more unconnected structures (e.g. ions) 
                 //choose the largest structure for analysis
                 //This step must be done prior to the next step!
-                if (!ConnectivityChecker.isConnected(tmpMolecule)) {
+                tmpMolecule = this.applySelectBiggestFragmentPreprocessing(tmpMolecule);
+                if (this.isStructureUnconnected(tmpMolecule)) {
                     tmpUnconnectedCounter++;
-                    IAtomContainerSet tmpFragmentsSet = ConnectivityChecker.partitionIntoMolecules(tmpMolecule);
-                    IAtomContainer tmpBiggestFragment = null;
-                    for (IAtomContainer tmpFragment : tmpFragmentsSet.atomContainers()) {
-                        if (tmpBiggestFragment == null || tmpBiggestFragment.getAtomCount() < tmpFragment.getAtomCount()) {
-                            tmpBiggestFragment = tmpFragment;
-                        }
-                    }
+                    tmpMolecule = this.applySelectBiggestFragmentPreprocessing(tmpMolecule);
                     tmpSettingsKeyForLogging += this.FRAGMENT_SELECTED_SETTINGS_KEY_ADDITION;
-                    tmpMolecule = tmpBiggestFragment;
                 }
                 //Filter molecules containing metals, metalloids or "R" atoms
-                boolean tmpIsForbiddenAtomicNumberDetected = false;
-                for (IAtom tmpAtom : tmpMolecule.atoms()) {
-                    if (!this.nonMetallicAtomicNumbersSet.contains(tmpAtom.getAtomicNumber())) {
-                        tmpIsForbiddenAtomicNumberDetected = true;
-                        break;
-                    }
-                }
+                boolean tmpIsForbiddenAtomicNumberDetected = this.applyAllowedElementsFilter(tmpMolecule);
                 if (tmpIsForbiddenAtomicNumberDetected) {
                     tmpCauseForFiltering = "Contains one or more metal, metalloid or \"R\" atoms";
                     tmpFilteredMoleculesCounter++;
@@ -816,26 +868,13 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
                     continue;
                 }
                 //Preprocessing: Neutralize charges
-                boolean isAChargeNeutralized = false;
-                for (IAtom tmpAtom : tmpMolecule.atoms()) {
-                    if (tmpAtom.getFormalCharge() != 0) {
-                        tmpChargeCounter++;
-                        tmpAtom.setFormalCharge(0);
-                        CDKHydrogenAdder tmpHAdder = CDKHydrogenAdder.getInstance(tmpMolecule.getBuilder());
-                        CDKAtomTypeMatcher tmpMatcher = CDKAtomTypeMatcher.getInstance(tmpMolecule.getBuilder());
-                        IAtomType tmpMatchedType = tmpMatcher.findMatchingAtomType(tmpMolecule, tmpAtom);
-                        if (tmpMatchedType != null) {
-                            AtomTypeManipulator.configure(tmpAtom, tmpMatchedType);
-                        }
-                        tmpHAdder.addImplicitHydrogens(tmpMolecule, tmpAtom);
-                        if(!isAChargeNeutralized) {
-                            isAChargeNeutralized = true;
-                        }
-                    }
-                }
+                boolean isAChargeNeutralized = this.applyNeutralizeChargesPreprocessing(tmpMolecule);
                 if (isAChargeNeutralized) {
                     tmpSettingsKeyForLogging += this.NEUTRALIZED_SETTINGS_KEY_ADDITION;
+                    tmpChargeCounter++;
                 }
+                ########################################################################################################*/
+                
                 //Following lines will be altered for final release
                 //Now the analysis of functional groups:
                 anAromaticity.apply(tmpMolecule);
@@ -895,6 +934,149 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
         System.out.println(tmpNoFunctionalGroupsCounter + " molecules contained no functional groups.");
         System.out.println(this.masterHashMap.size() + " different functional groups were detected so far.");
         
+    }
+    
+    /**
+     * Combines all filtering and preprocessing steps. Molecules will be filtered if they contain a not allowed atomic 
+     * number (metal, metalloid or 'R' atoms) or if their atom or bond count is zero. If the molecule should be filtered
+     * the IAtomContainer property MOLECULE_MUST_BE_FILTERED_PROPERTY_KEY will be set to true and the 
+     * CAUSE_FOR_FILTERING_PROPERTY_KEY will give the cause for the filtering.
+     * <p>
+     * The preprocessing consists of neutralizing any charges in the molecule and selecting the biggest fragment for
+     * further processing if the molecule consists of one or more unconnected structures. If any of these cases apply
+     * the IAtomContainer properties CHARGES_NEUTRALIZED_PROPERTY_KEY and BIGGEST_FRAGMENT_SELECTED_PROPERTY_KEY will be
+     * set accordingly.
+     * 
+     * @param aMolecule the molecule to be processed
+     * @return the processed molecule
+     * @throws CDKException if AtomContainerManipulator.percieveAtomTypesAndConfigureAtoms() or 
+     * applyNeutralizeChargesPreprocessing() throws a CDKException
+     */
+    private IAtomContainer applyFiltersAndPreprocessing(IAtomContainer aMolecule) throws CDKException {
+        aMolecule.setProperty(this.MOLECULE_MUST_BE_FILTERED_PROPERTY_KEY, false);
+        aMolecule.setProperty(this.CAUSE_FOR_FILTERING_PROPERTY_KEY, "");
+        aMolecule.setProperty(this.CHARGES_NEUTRALIZED_PROPERTY_KEY, false);
+        aMolecule.setProperty(this.BIGGEST_FRAGMENT_SELECTED_PROPERTY_KEY, false);
+        if (this.isAtomOrBondCountZero(aMolecule)) {
+            aMolecule.setProperty(this.MOLECULE_MUST_BE_FILTERED_PROPERTY_KEY, true);
+            aMolecule.setProperty(this.CAUSE_FOR_FILTERING_PROPERTY_KEY, this.ATOM_OR_BOND_COUNT_ZERO);
+            return aMolecule;
+        }
+        AtomContainerManipulator.percieveAtomTypesAndConfigureAtoms(aMolecule);        
+        //Preprocessing: From structures containing two or more unconnected structures (e.g. ions) 
+        //choose the largest structure for analysis
+        //This step must be done prior to the next step!
+        if (this.isStructureUnconnected(aMolecule)) {
+            aMolecule = this.applySelectBiggestFragmentPreprocessing(aMolecule);
+            aMolecule.setProperty(this.BIGGEST_FRAGMENT_SELECTED_PROPERTY_KEY, true);
+        }
+        //Filter molecules containing metals, metalloids or "R" atoms
+        if (this.areMetallicOrMetalloidAtomsInMolecule(aMolecule)) {
+            aMolecule.setProperty(this.MOLECULE_MUST_BE_FILTERED_PROPERTY_KEY, true);
+            aMolecule.setProperty(this.CAUSE_FOR_FILTERING_PROPERTY_KEY, this.FORBIDDEN_ATOMIC_NUMBER);
+            return aMolecule;
+        }
+        //Preprocessing: Neutralize charges
+        if (this.isMoleculeCharged(aMolecule)) {
+            aMolecule = this.applyNeutralizeChargesPreprocessing(aMolecule);
+            aMolecule.setProperty(this.CHARGES_NEUTRALIZED_PROPERTY_KEY, true);
+        }
+        return aMolecule;
+    }
+    
+    /**
+     * Returns true, if the atom or bond count of the molecule is zero. This is a cause for filtering the molecule.
+     * 
+     * @param aMolecule the molecule to be tested
+     * @return true, if the atom or bond count of the molecule is zero
+     */
+    private boolean isAtomOrBondCountZero(IAtomContainer aMolecule) {
+        return aMolecule.getAtomCount() == 0 || aMolecule.getBondCount() == 0;
+    }
+    
+    /**
+     * Returns true, if a not allowed atomic number is detected in the molecule. This is a cause for filtering the molecule.
+     * 
+     * @param aMolecule the molecule to be tested
+     * @return true, if the molecule contains a not allowed element
+     */
+    private boolean areMetallicOrMetalloidAtomsInMolecule(IAtomContainer aMolecule) {
+        for (IAtom tmpAtom : aMolecule.atoms()) {
+            if (!this.nonMetallicAtomicNumbersSet.contains(tmpAtom.getAtomicNumber())) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    /**
+     * Returns true, if the molecule consists of two or more unconnected structures.
+     * 
+     * @param aMolecule the molecule to be tested
+     * @return true, if the molecule consists of two or more unconnected structures
+     */
+    private boolean isStructureUnconnected(IAtomContainer aMolecule) {
+        return (!ConnectivityChecker.isConnected(aMolecule));
+    }
+    
+    /**
+     * Returns the biggest unconnected fragment/structure of the given molecule. To pre-check if the molecule has 
+     * two or more unconnected structures use isStructureConnected(). All set properties of aMolecule will be copied to 
+     * the returned IAtomContainer.
+     * 
+     * @param aMolecule the molecule whose biggest fragment should be found
+     * @return the biggest unconnected fragment/structure of the given molecule
+     */
+    private IAtomContainer applySelectBiggestFragmentPreprocessing(IAtomContainer aMolecule) {
+        IAtomContainerSet tmpFragmentsSet = ConnectivityChecker.partitionIntoMolecules(aMolecule);
+        IAtomContainer tmpBiggestFragment = null;
+        for (IAtomContainer tmpFragment : tmpFragmentsSet.atomContainers()) {
+            if (tmpBiggestFragment == null || tmpBiggestFragment.getAtomCount() < tmpFragment.getAtomCount()) {
+                tmpBiggestFragment = tmpFragment;
+            }
+        }
+        tmpBiggestFragment.setProperties(aMolecule.getProperties());
+        return tmpBiggestFragment;
+    }
+    
+    /**
+     * Returns true, if the molecule contains charged atoms.
+     * 
+     * @param aMolecule the molecule to be tested
+     * @return true, if the molecule contains charged atoms
+     */
+    private boolean isMoleculeCharged(IAtomContainer aMolecule) {
+        for (IAtom tmpAtom : aMolecule.atoms()) {
+            if (tmpAtom.getFormalCharge() != 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    /**
+     * Neutralizes all non-zero charges in the given molecule. To pre-check if the molecule has charged atoms use 
+     * isMoleculeCharged()
+     * 
+     * @param aMolecule the molecule to be neutralized
+     * @return the same IAtomContainer instance as aMolecule but with neutralized charges
+     * @throws CDKException if CDKAtomTypeMatcher.findMatchingAtomType() or CDKHydrogenAdder.addImplicitHydrogens 
+     * throws a CDKException
+     */
+    private IAtomContainer applyNeutralizeChargesPreprocessing(IAtomContainer aMolecule) throws CDKException {
+        for (IAtom tmpAtom : aMolecule.atoms()) {
+            if (tmpAtom.getFormalCharge() != 0) {
+                tmpAtom.setFormalCharge(0);
+                CDKHydrogenAdder tmpHAdder = CDKHydrogenAdder.getInstance(aMolecule.getBuilder());
+                CDKAtomTypeMatcher tmpMatcher = CDKAtomTypeMatcher.getInstance(aMolecule.getBuilder());
+                IAtomType tmpMatchedType = tmpMatcher.findMatchingAtomType(aMolecule, tmpAtom);
+                if (tmpMatchedType != null) {
+                    AtomTypeManipulator.configure(tmpAtom, tmpMatchedType);
+                }
+                tmpHAdder.addImplicitHydrogens(aMolecule, tmpAtom);
+            }
+        }
+        return aMolecule;
     }
     
     /**
