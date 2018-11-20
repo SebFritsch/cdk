@@ -637,7 +637,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
     
     //<editor-fold defaultstate="collapsed" desc="Private methods">
     /**
-     * Initializes all class variables and determines the output directory
+     * Initializes all class variables and determines the output directory.
      * 
      * @param aFileName name of the SD file to analyze for a quick pre-check if it is present and the test is therefore 
      * meant to run
@@ -762,8 +762,8 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
     
     /**
      * Does one iteration of loading molecules from an IteratingSDFReader, applying the given aromaticity model, 
-     * extracting their functional groups (with and without generalization) and adding the results to the master HashMap;
-     * Exceptions caused by read-in molecules are caught and logged
+     * extracting their functional groups (with and without generalization) and adding the results to the master HashMap.
+     * Exceptions caused by read-in molecules are caught and logged.
      * 
      * @param aReader to load the molecules to be screened
      * @param aSettingsKey resulting functional groups will be added to the inner maps of the master HasMap under this key
@@ -778,6 +778,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
             boolean anAreMultiplesCounted) {
         
         System.out.println("\nAnalyzing database using specified settings: " + aSettingsKey);
+        //<editor-fold defaultstate="collapsed" desc="Counter definitions">
         int tmpMoleculesCounter = 0; //total number of analyzed molecules
         int tmpChargeCounter = 0; //number of molecules that contain one or more charged atoms
         int tmpUnconnectedCounter = 0; //number of structures with unconnected substructures
@@ -786,8 +787,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
         int tmpNoAtomOrBondCounter = 0; //number of molecules that were filtered because they do not contain an atom or a bond
         int tmpSkippedMoleculesCounter = 0; //molecules that caused exceptions and are therefore skipped
         int tmpNoFunctionalGroupsCounter = 0; //number of molecules that contain no functional group
-        //Note: A molecule can be supposed to be filtered for more than one of the named reasons but only the first 
-        //tested reason will be named as cause
+        //</editor-fold>
         while (aReader.hasNext()) {
             tmpMoleculesCounter++;
             List<IAtomContainer> tmpFunctionalGroups;
@@ -799,6 +799,8 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
             String tmpSettingsKeyForLogging = aSettingsKey;
             IAtomContainer tmpOriginalMolecule = null;
             try {
+                /*Note: A molecule can be supposed to be filtered for more than one of the named reasons but only the first 
+                  tested reason will be named as cause*/
                 String tmpCauseForFiltering = "";
                 //Remove s-groups ... they cause trouble in atomContainer.clone()(->SgroupManilupator.copy)
                 tmpMolecule.removeProperty(CDKConstants.CTAB_SGROUPS);
@@ -905,11 +907,11 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
             if (!(tmpFunctionalGroups == null || tmpFunctionalGroups.isEmpty())) {
                 //Assumption: If a molecule does not have FGs without generalization it does not have FGs 
                 //with generalization either
-                this.addFunctionalGroupsToMasterMap(tmpFunctionalGroups, 
+                this.enterFunctionalGroupsIntoMasterMap(tmpFunctionalGroups, 
                         aSettingsKey, 
                         anAreMultiplesCounted, 
                         tmpOriginalMolecule);
-                this.addFunctionalGroupsToMasterMap(tmpFunctionalGroupsGeneralized, 
+                this.enterFunctionalGroupsIntoMasterMap(tmpFunctionalGroupsGeneralized, 
                         aSettingsKey + this.GENERALIZATION_SETTINGS_KEY_ADDITION,
                         anAreMultiplesCounted, 
                         tmpOriginalMolecule);
@@ -1056,7 +1058,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
     
     /**
      * Neutralizes all non-zero charges in the given molecule. To pre-check if the molecule has charged atoms use 
-     * isMoleculeCharged()
+     * isMoleculeCharged().
      * 
      * @param aMolecule the molecule to be neutralized
      * @return the same IAtomContainer instance as aMolecule but with neutralized charges
@@ -1080,9 +1082,9 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
     }
     
     /**
-     * Inserts a list of IAtomContainers (the functional groups of one molecule) into the master HashMap; If the 
+     * Inserts a list of IAtomContainers (the functional groups of one molecule) into the master HashMap. If the 
      * functional group is already inserted (with this settings key) its frequency for the given settings key is raised 
-     * by one or else a new inner HashMap will be created for it
+     * by one or else a new inner HashMap will be created for it.
      * 
      * @param aFunctionalGroupsList the functional groups of one molecule to be inserted
      * @param aSettingsKey will be the key of the inner HashMap inside the master HashMap
@@ -1091,7 +1093,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
      * @param anFGContainingMolecule the molecule from which the functional groups originated; will be added to the 
      * master Hashmap
      */
-    private void addFunctionalGroupsToMasterMap(
+    private void enterFunctionalGroupsIntoMasterMap(
             List<IAtomContainer> aFunctionalGroupsList, 
             String aSettingsKey, 
             boolean anAreMultiplesCounted,
@@ -1133,11 +1135,12 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
     }
     
     /**
-     * Writes all frequency data with the respective hash code, SMILES code and pseudo SMILES code for all functional 
-     * groups in the master HashMap to the output file
+     * Writes all frequency data with the respective hash code, SMILES code, pseudo SMILES code and the ChEBI or ChEMBL 
+     * id of an exemplary molecule that contains this functional group for all functional groups in the master HashMap 
+     * to the output file.
      * <p>
-     * Note: The IAtomContainer object stored in the master HashMap's inner maps are altered in this method for pseudo 
-     * SMILES creation! And all PrintWriter instances will be closed
+     * Note: The IAtomContainer object stored in the master HashMap's inner maps are cloned in this method for pseudo 
+     * SMILES creation. And all PrintWriter instances will be closed.
      */
     private void postProcessAndSaveData() {
         System.out.println("\nWriting to file...");
@@ -1162,6 +1165,8 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
                 //Creation of unique SMILES code
                 tmpSmilesCode = this.smilesGenerator.create(tmpFunctionalGroup);
                 //Creation of pseudo SMILES code
+                tmpPseudoSmilesCode = this.getPseudoSmilesCode(tmpFunctionalGroup.clone());
+                /*######################################################################################################
                 for (IAtom tmpAtom : tmpFunctionalGroup.atoms()) {
                     if (tmpAtom.isAromatic()) {
                         IAtom tmpReplacementAtom = null;
@@ -1206,7 +1211,8 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
                         .replaceAll("(Sm)", this.PSEUDO_SMILES_AROMATIC_SULPHUR)
                         .replaceAll("(\\[Os\\])", this.PSEUDO_SMILES_AROMATIC_OXYGEN)
                         .replaceAll("(Os)", this.PSEUDO_SMILES_AROMATIC_OXYGEN);
-            } catch (CDKException | NullPointerException anException) {
+                ########################################################################################################*/
+            } catch (CDKException | NullPointerException | CloneNotSupportedException anException) {
                 this.logException(anException, "Creating SMILES code, no settings", tmpFunctionalGroup);
                 tmpSmilesCode = this.SMILES_CODE_PLACEHOLDER;
                 tmpPseudoSmilesCode = this.SMILES_CODE_PLACEHOLDER;
@@ -1242,8 +1248,73 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
     }
     
     /**
+     * Returns the Pseudo SMILES code of the given molecule. Pseudo atoms are represented by 'R' atoms and aromatic 
+     * atoms will be marked by *.
+     * 
+     * @param aMolecule the molecule to be represented by the Pseudo SMILES string
+     * @return the Pseudo SMILES representation of the given molecule
+     * @throws CDKException if SmilesGenerator.create() throws a CDKException
+     * @throws CloneNotSupportedException if IAtomContainer.clone() throws a CloneNotSupportedException
+     */
+    private String getPseudoSmilesCode(IAtomContainer aMolecule) throws CDKException, CloneNotSupportedException {
+        IAtomContainer tmpMolecule = aMolecule.clone();
+        for (IAtom tmpAtom : tmpMolecule.atoms()) {
+            if (tmpAtom.isAromatic()) {
+                IAtom tmpReplacementAtom = null;
+                if (null != tmpAtom.getSymbol()) switch (tmpAtom.getSymbol()) {
+                    case "C":
+                        tmpReplacementAtom = new Atom("Ce");
+                        break;
+                    case "N":
+                        tmpReplacementAtom = new Atom("Nd");
+                        break;
+                    case "S":
+                        tmpReplacementAtom = new Atom("Sm");
+                        break;
+                    case "O":
+                        tmpReplacementAtom = new Atom("Os");
+                        break;
+                    default:
+                        break;
+                }
+                if (tmpReplacementAtom != null) {
+                    Integer tmpImplicitHydrogenCount = tmpAtom.getImplicitHydrogenCount();
+                    AtomContainerManipulator.replaceAtomByAtom(tmpMolecule, tmpAtom, tmpReplacementAtom);
+                    tmpReplacementAtom.setImplicitHydrogenCount(
+                            tmpImplicitHydrogenCount == null ? 0 : tmpImplicitHydrogenCount);
+                }
+            }
+            tmpAtom.setIsAromatic(false);
+            if (tmpAtom instanceof IPseudoAtom && "R".equals(((IPseudoAtom)tmpAtom).getLabel())) {  
+                //second condition: see creation of R atoms in ErtlFunctionalGroupsFinder
+                IAtom tmpReplacementAtom = new Atom("Es");
+                Integer tmpImplicitHydrogenCount = tmpAtom.getImplicitHydrogenCount();
+                AtomContainerManipulator.replaceAtomByAtom(tmpMolecule, tmpAtom, tmpReplacementAtom);
+                tmpReplacementAtom.setImplicitHydrogenCount(
+                        tmpImplicitHydrogenCount == null ? 0 : tmpImplicitHydrogenCount);
+            }
+        }
+        for (IBond tmpBond : tmpMolecule.bonds()) {
+            tmpBond.setIsAromatic(false);
+        }
+        String tmpPseudoSmilesCode = this.smilesGenerator.create(tmpMolecule);
+        tmpPseudoSmilesCode = tmpPseudoSmilesCode
+                .replaceAll("(\\[Es\\])", this.PSEUDO_SMILES_R_ATOM)
+                .replaceAll("(Es)", this.PSEUDO_SMILES_R_ATOM)
+                .replaceAll("(\\[Ce\\])", this.PSEUDO_SMILES_AROMATIC_CARBON)
+                .replaceAll("(Ce)", this.PSEUDO_SMILES_AROMATIC_CARBON)
+                .replaceAll("(\\[Nd\\])", this.PSEUDO_SMILES_AROMATIC_NITROGEN)
+                .replaceAll("(Nd)", this.PSEUDO_SMILES_AROMATIC_NITROGEN)
+                .replaceAll("(\\[Sm\\])", this.PSEUDO_SMILES_AROMATIC_SULPHUR)
+                .replaceAll("(Sm)", this.PSEUDO_SMILES_AROMATIC_SULPHUR)
+                .replaceAll("(\\[Os\\])", this.PSEUDO_SMILES_AROMATIC_OXYGEN)
+                .replaceAll("(Os)", this.PSEUDO_SMILES_AROMATIC_OXYGEN);
+        return tmpPseudoSmilesCode;
+    }
+    
+    /**
      * Logs molecules that are filtered from the SD file to the filtered molecules file with SMILES code, ChEBI name 
-     * and id or ChEMBL id and why they were filtered
+     * and id or ChEMBL id and why they were filtered.
      * 
      * @param aMolecule the filtered molecule to be logged
      * @param aCounter the number of filtered molecules so far (will be written to file)
@@ -1272,7 +1343,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
     
     /**
      * Logs molecules that raised exceptions somewhere in the processing to the exceptions log file with exception 
-     * message and stack trace, SMILES code ChEBI name and id or ChEMBL id
+     * message and stack trace, SMILES code ChEBI name and id or ChEMBL id.
      * 
      * @param anException the exception caused by the molecule
      * @param aSettingsKey a string representation of the settings tested in the current iteration, 
