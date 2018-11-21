@@ -42,6 +42,7 @@ import org.openscience.cdk.interfaces.IPseudoAtom;
 import org.openscience.cdk.io.iterator.IteratingSDFReader;
 import org.openscience.cdk.smiles.SmiFlavor;
 import org.openscience.cdk.smiles.SmilesGenerator;
+import org.openscience.cdk.smiles.SmilesParser;
 import org.openscience.cdk.tools.ErtlFunctionalGroupsFinder.Mode;
 import org.openscience.cdk.tools.manipulator.AtomContainerManipulator;
 import org.openscience.cdk.tools.manipulator.AtomTypeManipulator;
@@ -435,7 +436,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
     @Ignore
     @Test
     public void analyzeChebi() throws Exception {
-        this.initialize(this.CHEBI_SD_FILE_NAME, this.CHEBI_TEST_IDENTIFIER);
+        this.initialize(this.CHEBI_SD_FILE_NAME, this.CHEBI_TEST_IDENTIFIER, false);
         Assume.assumeTrue(this.isTestAbleToRun);
         
         System.out.println("\nLoading file named: " + this.CHEBI_SD_FILE_NAME);
@@ -485,9 +486,10 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
      * 
      * @throws java.lang.Exception if initialize() throws an exception or an unexpected exception occurs
      */
+    @Ignore
     @Test
     public void analyzeChebiNoMultiples() throws Exception {
-        this.initialize(this.CHEBI_SD_FILE_NAME, this.CHEBI_NO_MULTIPLES_TEST_IDENTIFIER);
+        this.initialize(this.CHEBI_SD_FILE_NAME, this.CHEBI_NO_MULTIPLES_TEST_IDENTIFIER, false);
         Assume.assumeTrue(this.isTestAbleToRun);
         
         System.out.println("\nLoading file named: " + this.CHEBI_SD_FILE_NAME);
@@ -539,7 +541,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
     @Ignore
     @Test
     public void analyzeChembl() throws Exception {
-        this.initialize(this.CHEMBL_SD_FILE_NAME, this.CHEMBL_TEST_IDENTIFIER);
+        this.initialize(this.CHEMBL_SD_FILE_NAME, this.CHEMBL_TEST_IDENTIFIER, false);
         Assume.assumeTrue(this.isTestAbleToRun);
         
         System.out.println("\nLoading file named: " + this.CHEMBL_SD_FILE_NAME);
@@ -591,7 +593,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
     @Ignore
     @Test
     public void analyzeCycleFinderDependency() throws Exception {
-        this.initialize(this.CHEBI_SD_FILE_NAME, this.CYCLE_FINDER_TEST_IDENTIFIER);
+        this.initialize(this.CHEBI_SD_FILE_NAME, this.CYCLE_FINDER_TEST_IDENTIFIER, false);
         Assume.assumeTrue(this.isTestAbleToRun);
         
         System.out.println("\nLoading file named: " + this.CHEBI_SD_FILE_NAME);
@@ -633,6 +635,48 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
         System.out.println("\nFinished!");
         System.out.println("\nNumber of occured exceptions: " + this.exceptionsCounter);
     }
+    
+    /**
+     * Test for finding the cause of incorrect valences in the pseudo SMILES code of generalized functional groups.
+     * 
+     * @throws Exception for multiple causes
+     */
+    @Test
+    public void debuggingTests() throws Exception {
+        this.initialize("[empty]", "Debugging", true);
+        /*System.out.println("\nLoading file named: " + "ChEBI_65490.mol");
+        File tmpMolFile = new File("C:\\Users\\Bachelor\\Downloads\\ChEBI_65490.mol");
+        MDLV2000Reader tmpReader = new MDLV2000Reader(new FileInputStream(tmpMolFile));
+        IAtomContainer tmpMolecule = (IAtomContainer) tmpReader.read(DefaultChemObjectBuilder.getInstance().newInstance(IAtomContainer.class));*/
+        String tmpChebi65490Smiles = "Cc1c(O)c2C(=O)C[C@H](Oc2c2C(c3ccccc3)C3=C(Oc12)C(C)(C)C(=O)C(C)(C)C3=O)c1ccccc1";
+        SmilesParser tmpSmilesParser = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        IAtomContainer tmpMolecule = tmpSmilesParser.parseSmiles(tmpChebi65490Smiles);
+        tmpMolecule.removeProperty(CDKConstants.CTAB_SGROUPS);
+        tmpMolecule = this.applyFiltersAndPreprocessing(tmpMolecule);
+        CycleFinder tmpCycleFinder = Cycles.or(Cycles.all(), Cycles.vertexShort());
+        Aromaticity tmpCdkModel = new Aromaticity(ElectronDonation.cdk(), tmpCycleFinder);
+        tmpCdkModel.apply(tmpMolecule);
+        
+        this.ertlFGFinderGenOff.find(tmpMolecule);
+        this.ertlFGFinderGenOff.markAtoms(tmpMolecule);
+        
+        List<IAtomContainer> tmpFunctionalGroups = this.ertlFGFinderGenOff.extractGroups(tmpMolecule);
+        for (int i = 0; i < tmpFunctionalGroups.size(); i++) {
+            System.out.println();
+            System.out.println("Pseudo SMILES of functional group: " + this.getPseudoSmilesCode(tmpFunctionalGroups.get(i)));
+            List<IAtomContainer> tmpFunctionalGroupsCloned = new LinkedList<>();
+            tmpFunctionalGroupsCloned.add(tmpFunctionalGroups.get(i).clone());
+            System.out.println("Pseudo SMILES of cloned functional group: " + this.getPseudoSmilesCode(tmpFunctionalGroupsCloned.get(0)));
+            List<IAtomContainer> tmpFunctionalGroupsGeneralized = new LinkedList<>();
+            tmpFunctionalGroupsGeneralized.add(tmpFunctionalGroups.get(i));
+            tmpFunctionalGroupsGeneralized = this.ertlFGFinderGenOff.expandGeneralizedEnvironments(tmpFunctionalGroupsGeneralized);
+            System.out.println("Pseudo SMILES of generalized functional group (without prior cloning): " + this.getPseudoSmilesCode(tmpFunctionalGroupsGeneralized.get(0)));
+            List<IAtomContainer> tmpFunctionalGroupsClonedAndGeneralized = this.ertlFGFinderGenOff.expandGeneralizedEnvironments(tmpFunctionalGroupsCloned);
+            System.out.println("Pseudo SMILES of generalized functional group with prior cloning: " + this.getPseudoSmilesCode(tmpFunctionalGroupsClonedAndGeneralized.get(0)));
+            System.out.println();
+        }
+        
+    }
     //</editor-fold>
     
     //<editor-fold defaultstate="collapsed" desc="Private methods">
@@ -643,24 +687,32 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
      * meant to run
      * @param aTestIdentifier a folder with this name will be created in the output directory and it will be added to 
      * the output and log files' names for association of test and files
+     * @param aRunAnyway if true, the test is not aborted even if the file with aFileName can not be found
      * @throws java.lang.Exception if one the FileWriter instances can not be instantiated or more than 
      * Integer.MAX-VALUE tests are to be run this minute (error in the naming of output files) or an unexpected 
      * exception occurs.
      */
-    private void initialize(String aFileName, String aTestIdentifier) throws Exception {
+    private void initialize(String aFileName, String aTestIdentifier, boolean aRunAnyway) throws Exception {
         System.out.println("\n#########################################################################\n");
         System.out.println("Starting new test, identifier: " + aTestIdentifier);
         System.out.println("\nInitializing class variables...");
         this.isTestAbleToRun = true;
         //First, check if the SD file is present and ignore test if it is not
         ClassLoader tmpClassLoader = this.getClass().getClassLoader();
-        File tmpSDFile = new File(tmpClassLoader.getResource(this.SDF_RESOURCES_PATH + aFileName).getFile());
-        if (!tmpSDFile.exists()) {
-            System.out.println("\n\tUnable to find a file named " + aFileName 
-                    + " in the resources directory. Test is ignored.");
-            this.isTestAbleToRun = false;
-            Assume.assumeTrue(false);
-            return;
+        File tmpSDFile;
+        try {
+            tmpSDFile = new File(tmpClassLoader.getResource(this.SDF_RESOURCES_PATH + aFileName).getFile());
+        } catch (NullPointerException aNullPointerException) {
+            //getFile() throws a NullPointerException if the required file can not be found
+            System.out.println("\n\tUnable to find a file named " + aFileName + " in the resources directory.");
+            if (!aRunAnyway) {
+                System.out.println("\nTest is ignored.");
+                this.isTestAbleToRun = false;
+                Assume.assumeTrue(false);
+                return;
+            } else {
+                System.out.println("\n\tAs specified, the test will be run anyway.");
+            }
         }
         //Determine the output directory
         String tmpOutputRootDirectory = System.getProperty(this.SYSTEM_PROPERTY_FOR_OUTPUT_DIRECTORY);
@@ -1328,6 +1380,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
         } catch (CDKException | NullPointerException anException){
             this.filteredMoleculesPrintWriter.println("SMILES code: " + this.SMILES_CODE_PLACEHOLDER);
         }
+        //aMolecule.getProperty(CDKConstants.TITLE);?
         String tmpChebiName = aMolecule.getProperty("ChEBI Name");
         if (tmpChebiName != null)
             this.filteredMoleculesPrintWriter.println("ChEBI name: " + tmpChebiName);
@@ -1361,6 +1414,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
         } catch (CDKException | NullPointerException aNewException){
             this.exceptionsPrintWriter.println("SMILES code: " + this.SMILES_CODE_PLACEHOLDER);
         }
+        //aMolecule.getProperty(CDKConstants.TITLE);?
         String tmpChebiName = aMolecule.getProperty("ChEBI Name");
         if (tmpChebiName != null)
             this.exceptionsPrintWriter.println("ChEBI name: " + tmpChebiName);
