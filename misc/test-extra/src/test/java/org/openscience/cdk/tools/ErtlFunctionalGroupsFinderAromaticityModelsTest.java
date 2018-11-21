@@ -39,6 +39,7 @@ import org.openscience.cdk.interfaces.IAtomContainerSet;
 import org.openscience.cdk.interfaces.IAtomType;
 import org.openscience.cdk.interfaces.IBond;
 import org.openscience.cdk.interfaces.IPseudoAtom;
+import org.openscience.cdk.io.MDLV2000Writer;
 import org.openscience.cdk.io.iterator.IteratingSDFReader;
 import org.openscience.cdk.smiles.SmiFlavor;
 import org.openscience.cdk.smiles.SmilesGenerator;
@@ -403,7 +404,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
     /**
      * A list for storing all used settings keys in a test
      */
-    private Set<String> settingsKeysList;
+    private List<String> settingsKeysList;
     
     /**
      * All allowed atomic numbers to pass to the ErtlFunctionalGroupsFinder as a set of integers (will be parsed from 
@@ -433,7 +434,6 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
      * 
      * @throws java.lang.Exception if initialize() throws an exception or an unexpected exception occures
      */
-    @Ignore
     @Test
     public void analyzeChebi() throws Exception {
         this.initialize(this.CHEBI_SD_FILE_NAME, this.CHEBI_TEST_IDENTIFIER, false);
@@ -644,13 +644,10 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
     @Test
     public void debuggingTests() throws Exception {
         this.initialize("[empty]", "Debugging", true);
-        /*System.out.println("\nLoading file named: " + "ChEBI_65490.mol");
-        File tmpMolFile = new File("C:\\Users\\Bachelor\\Downloads\\ChEBI_65490.mol");
-        MDLV2000Reader tmpReader = new MDLV2000Reader(new FileInputStream(tmpMolFile));
-        IAtomContainer tmpMolecule = (IAtomContainer) tmpReader.read(DefaultChemObjectBuilder.getInstance().newInstance(IAtomContainer.class));*/
         String tmpChebi65490Smiles = "Cc1c(O)c2C(=O)C[C@H](Oc2c2C(c3ccccc3)C3=C(Oc12)C(C)(C)C(=O)C(C)(C)C3=O)c1ccccc1";
         SmilesParser tmpSmilesParser = new SmilesParser(DefaultChemObjectBuilder.getInstance());
         IAtomContainer tmpMolecule = tmpSmilesParser.parseSmiles(tmpChebi65490Smiles);
+        MDLV2000Writer tmpMolFileWriter = new MDLV2000Writer(System.out);
         tmpMolecule.removeProperty(CDKConstants.CTAB_SGROUPS);
         tmpMolecule = this.applyFiltersAndPreprocessing(tmpMolecule);
         CycleFinder tmpCycleFinder = Cycles.or(Cycles.all(), Cycles.vertexShort());
@@ -663,16 +660,31 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
         List<IAtomContainer> tmpFunctionalGroups = this.ertlFGFinderGenOff.extractGroups(tmpMolecule);
         for (int i = 0; i < tmpFunctionalGroups.size(); i++) {
             System.out.println();
+            System.out.println("----------------------------------------------------------");
+            System.out.println();
+            System.out.println("Functional group number " + (i+1));
             System.out.println("Pseudo SMILES of functional group: " + this.getPseudoSmilesCode(tmpFunctionalGroups.get(i)));
+            System.out.println("Molfile of functional group:");
+            tmpMolFileWriter.write(tmpFunctionalGroups.get(0));
+            System.out.println();
             List<IAtomContainer> tmpFunctionalGroupsCloned = new LinkedList<>();
             tmpFunctionalGroupsCloned.add(tmpFunctionalGroups.get(i).clone());
             System.out.println("Pseudo SMILES of cloned functional group: " + this.getPseudoSmilesCode(tmpFunctionalGroupsCloned.get(0)));
+            System.out.println("Molfile of cloned functional group:");
+            tmpMolFileWriter.write(tmpFunctionalGroupsCloned.get(0));
+            System.out.println();
             List<IAtomContainer> tmpFunctionalGroupsGeneralized = new LinkedList<>();
             tmpFunctionalGroupsGeneralized.add(tmpFunctionalGroups.get(i));
             tmpFunctionalGroupsGeneralized = this.ertlFGFinderGenOff.expandGeneralizedEnvironments(tmpFunctionalGroupsGeneralized);
             System.out.println("Pseudo SMILES of generalized functional group (without prior cloning): " + this.getPseudoSmilesCode(tmpFunctionalGroupsGeneralized.get(0)));
+            System.out.println("Molfile of generalized functional group (without prior cloning):");
+            tmpMolFileWriter.write(tmpFunctionalGroupsGeneralized.get(0));
+            System.out.println();
             List<IAtomContainer> tmpFunctionalGroupsClonedAndGeneralized = this.ertlFGFinderGenOff.expandGeneralizedEnvironments(tmpFunctionalGroupsCloned);
             System.out.println("Pseudo SMILES of generalized functional group with prior cloning: " + this.getPseudoSmilesCode(tmpFunctionalGroupsClonedAndGeneralized.get(0)));
+            System.out.println("Molfile of cloned and then generalized functional group:");
+            tmpMolFileWriter.write(tmpFunctionalGroupsClonedAndGeneralized.get(0));
+            System.out.println();
             System.out.println();
         }
         
@@ -800,7 +812,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
         this.ertlFGFinderGenOff = new ErtlFunctionalGroupsFinder(Mode.NO_GENERALIZATION);
         this.ertlFGFinderGenOn = new ErtlFunctionalGroupsFinder(Mode.DEFAULT);
         this.masterHashMap = new HashMap(this.MASTER_HASHMAP_INITIAL_CAPACITY, this.MASTER_HASHMAP_LOAD_FACTOR);
-        this.settingsKeysList = new HashSet<>();
+        this.settingsKeysList = new LinkedList<>();
         this.exceptionsCounter = 0;
         this.areFilteredMoleculesLogged = false;
         String[] tmpMetalNumbersStrings = this.NON_METALLIC_ATOMIC_NUMBERS.split(",");
@@ -929,24 +941,18 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
                 }
                 ########################################################################################################*/
                 
-                //Following lines will be altered for final release
-                //Now the analysis of functional groups:
                 anAromaticity.apply(tmpMolecule);
+                //Now the analysis of functional groups (will be altered for final release):
                 this.ertlFGFinderGenOff.find(tmpMolecule);
                 this.ertlFGFinderGenOff.markAtoms(tmpMolecule);
                 tmpFunctionalGroups = this.ertlFGFinderGenOff.extractGroups(tmpMolecule);
                 //Do the extraction again with activated generalization
                 tmpSettingsKeyForLogging += this.GENERALIZATION_SETTINGS_KEY_ADDITION;
                 //clone the original molecule before that or rather before first marking/extraction?
-                //this.ertlFGFinderGenOn.find(tmpMolecule); 
-                //this.ertlFGFinderGenOn.markAtoms(tmpMolecule);
-                //tmpFunctionalGroupsGeneralized = this.ertlFGFinderGenOn.extractGroups(tmpMolecule);
-                //Following lines will be omitted for final release and replaced by the lines above
-                List<IAtomContainer> tmpClonedFGs = new LinkedList<>();
-                for (IAtomContainer tmpFunctionalGroup : tmpFunctionalGroups) {
-                    tmpClonedFGs.add(tmpFunctionalGroup.clone());
-                }
-                tmpFunctionalGroupsGeneralized = this.ertlFGFinderGenOff.expandGeneralizedEnvironments(tmpClonedFGs);
+                this.ertlFGFinderGenOn.find(tmpMolecule); 
+                this.ertlFGFinderGenOn.markAtoms(tmpMolecule);
+                tmpFunctionalGroupsGeneralized = this.ertlFGFinderGenOn.extractGroups(tmpMolecule);
+                tmpFunctionalGroupsGeneralized = this.ertlFGFinderGenOn.expandGeneralizedEnvironments(tmpFunctionalGroupsGeneralized);
             } catch (Exception anException) {
                 tmpSkippedMoleculesCounter++;
                 if (tmpOriginalMolecule != null) {
@@ -1199,7 +1205,8 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
         //Writing the output file's header
         String tmpFileHeader = this.HASH_CODE_KEY + this.OUTPUT_FILE_SEPERATOR + this.PSEUDO_SMILES_CODE_KEY 
                 + this.OUTPUT_FILE_SEPERATOR + this.SMILES_CODE_KEY;
-        for (String tmpSettingsKey : this.settingsKeysList) {
+        for (Iterator<String> tmpIterator = this.settingsKeysList.iterator(); tmpIterator.hasNext();) {
+            String tmpSettingsKey = tmpIterator.next();
             tmpFileHeader += this.OUTPUT_FILE_SEPERATOR + tmpSettingsKey;
         }
         tmpFileHeader += this.OUTPUT_FILE_SEPERATOR + this.MOLECULE_OF_ORIGIN_KEY;
@@ -1217,7 +1224,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
                 //Creation of unique SMILES code
                 tmpSmilesCode = this.smilesGenerator.create(tmpFunctionalGroup);
                 //Creation of pseudo SMILES code
-                tmpPseudoSmilesCode = this.getPseudoSmilesCode(tmpFunctionalGroup.clone());
+                tmpPseudoSmilesCode = this.getPseudoSmilesCode(tmpFunctionalGroup);
                 /*######################################################################################################
                 for (IAtom tmpAtom : tmpFunctionalGroup.atoms()) {
                     if (tmpAtom.isAromatic()) {
@@ -1272,7 +1279,8 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
             //Writing the record for this functional group
             String tmpRecord = tmpHashCode + this.OUTPUT_FILE_SEPERATOR + tmpPseudoSmilesCode 
                     + this.OUTPUT_FILE_SEPERATOR + tmpSmilesCode;
-            for (String tmpSettingsKey : this.settingsKeysList) {
+            for (Iterator<String> tmpIterator = this.settingsKeysList.iterator(); tmpIterator.hasNext();) {
+                String tmpSettingsKey = tmpIterator.next();
                 if (tmpInnerMap.get(tmpSettingsKey) == null) {
                     tmpInnerMap.put(tmpSettingsKey, 0);
                 }
@@ -1306,7 +1314,8 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
      * @param aMolecule the molecule to be represented by the Pseudo SMILES string
      * @return the Pseudo SMILES representation of the given molecule
      * @throws CDKException if SmilesGenerator.create() throws a CDKException
-     * @throws CloneNotSupportedException if IAtomContainer.clone() throws a CloneNotSupportedException
+     * @throws CloneNotSupportedException if IAtomContainer.clone() throws a CloneNotSupportedException when 
+     * invoked on aMolecule
      */
     private String getPseudoSmilesCode(IAtomContainer aMolecule) throws CDKException, CloneNotSupportedException {
         IAtomContainer tmpMolecule = aMolecule.clone();
