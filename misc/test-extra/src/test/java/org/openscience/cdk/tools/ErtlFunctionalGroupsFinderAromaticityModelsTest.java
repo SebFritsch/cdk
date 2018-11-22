@@ -120,7 +120,9 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
     /**
      * First line in the exceptions log file
      */
-    private final String EXCEPTIONS_LOG_FILE_HEADER = "Following molecules led to the specified exceptions:\n";
+    private final String EXCEPTIONS_LOG_FILE_HEADER = "Following molecules led to the specified exceptions:" + System.getProperty("line.separator")
+            + "(Note: If too many exceptions are thrown too fast the JVM stops filling in the complete stack trace. "
+            + "You need to be looking at an earlier stack trace to see the details." + System.getProperty("line.separator");
     
     /**
      * Name of file for logging filtered molecules
@@ -247,6 +249,12 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
      * cdkAllowingExocyclic aromaticity model (and internally for the master HashMap's inner maps)
      */
     private final String CDK_EXOCYCLIC_MODEL_SETTINGS_KEY = "cdkExocyclic";
+    
+    /**
+     * Key for the output file's header under which to store the frequency of a functional group when using the 
+     * cdk legacy aromaticity model (and internally for the master HashMap's inner maps)
+     */
+    private final String CDK_LEGACY_MODEL_SETTINGS_KEY = "cdkLegacy";
     
     /**
      * This string will be added to an original settings key when applying the ErtlFunctionalGroupsFinder with activated 
@@ -443,7 +451,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
         ClassLoader tmpClassLoader = this.getClass().getClassLoader();
         File tmpChebiSDFile = new File(tmpClassLoader.getResource(this.SDF_RESOURCES_PATH + this.CHEBI_SD_FILE_NAME)
                 .getFile());
-        int tmpRequiredNumberOfReaders = 4;
+        int tmpRequiredNumberOfReaders = 5;
         IteratingSDFReader[] tmpReaders = new IteratingSDFReader[tmpRequiredNumberOfReaders];
         try {
             for (int i = 0; i < tmpRequiredNumberOfReaders; i++) {
@@ -463,6 +471,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
         Aromaticity tmpCdkModel = new Aromaticity(ElectronDonation.cdk(), tmpCycleFinder);
         Aromaticity tmpPiBondsModel = new Aromaticity(ElectronDonation.piBonds(), tmpCycleFinder);
         Aromaticity tmpCdkAllowingExocyclicModel = new Aromaticity(ElectronDonation.cdkAllowingExocyclic(), tmpCycleFinder);
+        Aromaticity tmpCDKLegacyModel = Aromaticity.cdkLegacy();
         
         boolean tmpAreMultiplesCounted = true;
         
@@ -470,6 +479,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
         this.calculateAbsoluteFGFrequencies(tmpReaders[1], this.CDK_MODEL_SETTINGS_KEY, tmpCdkModel, tmpAreMultiplesCounted);
         this.calculateAbsoluteFGFrequencies(tmpReaders[2], this.PIBONDS_MODEL_SETTINGS_KEY, tmpPiBondsModel, tmpAreMultiplesCounted);
         this.calculateAbsoluteFGFrequencies(tmpReaders[3], this.CDK_EXOCYCLIC_MODEL_SETTINGS_KEY, tmpCdkAllowingExocyclicModel, tmpAreMultiplesCounted);
+        this.calculateAbsoluteFGFrequencies(tmpReaders[4], this.CDK_LEGACY_MODEL_SETTINGS_KEY, tmpCDKLegacyModel, tmpAreMultiplesCounted);
         
         System.out.println("\nAll analyses are done!");
         this.postProcessAndSaveData();
@@ -496,7 +506,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
         ClassLoader tmpClassLoader = this.getClass().getClassLoader();
         File tmpChebiSDFile = new File(tmpClassLoader.getResource(this.SDF_RESOURCES_PATH + this.CHEBI_SD_FILE_NAME)
                 .getFile());
-        int tmpRequiredNumberOfReaders = 4;
+        int tmpRequiredNumberOfReaders = 5;
         IteratingSDFReader[] tmpReaders = new IteratingSDFReader[tmpRequiredNumberOfReaders];
         try {
             for (int i = 0; i < tmpRequiredNumberOfReaders; i++) {
@@ -516,6 +526,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
         Aromaticity tmpCdkModel = new Aromaticity(ElectronDonation.cdk(), tmpCycleFinder);
         Aromaticity tmpPiBondsModel = new Aromaticity(ElectronDonation.piBonds(), tmpCycleFinder);
         Aromaticity tmpCdkAllowingExocyclicModel = new Aromaticity(ElectronDonation.cdkAllowingExocyclic(), tmpCycleFinder);
+        Aromaticity tmpCDKLegacyModel = Aromaticity.cdkLegacy();
         
         boolean tmpAreMultiplesCounted = false;
         
@@ -523,6 +534,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
         this.calculateAbsoluteFGFrequencies(tmpReaders[1], this.CDK_MODEL_SETTINGS_KEY, tmpCdkModel, tmpAreMultiplesCounted);
         this.calculateAbsoluteFGFrequencies(tmpReaders[2], this.PIBONDS_MODEL_SETTINGS_KEY, tmpPiBondsModel, tmpAreMultiplesCounted);
         this.calculateAbsoluteFGFrequencies(tmpReaders[3], this.CDK_EXOCYCLIC_MODEL_SETTINGS_KEY, tmpCdkAllowingExocyclicModel, tmpAreMultiplesCounted);
+        this.calculateAbsoluteFGFrequencies(tmpReaders[4], this.CDK_LEGACY_MODEL_SETTINGS_KEY, tmpCDKLegacyModel, tmpAreMultiplesCounted);
         
         System.out.println("\nAll analyses are done!");
         this.postProcessAndSaveData();
@@ -548,7 +560,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
         ClassLoader tmpClassLoader = this.getClass().getClassLoader();
         File tmpChebiSDFile = new File(tmpClassLoader.getResource(this.SDF_RESOURCES_PATH + this.CHEMBL_SD_FILE_NAME)
                 .getFile());
-        int tmpRequiredNumberOfReaders = 4;
+        int tmpRequiredNumberOfReaders = 5;
         IteratingSDFReader[] tmpReaders = new IteratingSDFReader[tmpRequiredNumberOfReaders];
         try {
             for (int i = 0; i < tmpRequiredNumberOfReaders; i++) {
@@ -568,6 +580,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
         Aromaticity tmpCdkModel = new Aromaticity(ElectronDonation.cdk(), tmpCycleFinder);
         Aromaticity tmpPiBondsModel = new Aromaticity(ElectronDonation.piBonds(), tmpCycleFinder);
         Aromaticity tmpCdkAllowingExocyclicModel = new Aromaticity(ElectronDonation.cdkAllowingExocyclic(), tmpCycleFinder);
+        Aromaticity tmpCDKLegacyModel = Aromaticity.cdkLegacy();
         
         boolean tmpAreMultiplesCounted = true;
         
@@ -575,6 +588,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
         this.calculateAbsoluteFGFrequencies(tmpReaders[1], this.CDK_MODEL_SETTINGS_KEY, tmpCdkModel, tmpAreMultiplesCounted);
         this.calculateAbsoluteFGFrequencies(tmpReaders[2], this.PIBONDS_MODEL_SETTINGS_KEY, tmpPiBondsModel, tmpAreMultiplesCounted);
         this.calculateAbsoluteFGFrequencies(tmpReaders[3], this.CDK_EXOCYCLIC_MODEL_SETTINGS_KEY, tmpCdkAllowingExocyclicModel, tmpAreMultiplesCounted);
+        this.calculateAbsoluteFGFrequencies(tmpReaders[4], this.CDK_LEGACY_MODEL_SETTINGS_KEY, tmpCDKLegacyModel, tmpAreMultiplesCounted);
         
         System.out.println("\nAll analyses are done!");
         this.postProcessAndSaveData();
@@ -641,6 +655,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
      * 
      * @throws Exception for multiple causes
      */
+    @Ignore
     @Test
     public void debuggingTests() throws Exception {
         this.initialize("[empty]", "Debugging", true);
@@ -687,7 +702,40 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
             System.out.println();
             System.out.println();
         }
+    }
+    
+    /**
+     * Test for proving exemplarily that empty stack traces in the exceptions log file are due to settings in the JVM
+     * and not empty by themselves. Also to see if these exceptions also occur in CDK methods. 
+     * 
+     * @throws Exception 
+     */
+    @Ignore
+    @Test
+    public void debuggingTest2() throws Exception {
+        this.initialize("ChEBI_52749.sdf", "Debugging2", false);
+        ClassLoader tmpClassLoader = this.getClass().getClassLoader();
+        File tmpChebiSDFile = new File(tmpClassLoader.getResource(this.SDF_RESOURCES_PATH + "ChEBI_52749.sdf")
+                .getFile());
+        IteratingSDFReader tmpChebiReader;
+        try {
+            tmpChebiReader = new IteratingSDFReader(new FileInputStream(tmpChebiSDFile), DefaultChemObjectBuilder.getInstance(), true);
+        } catch (FileNotFoundException aFileNotFoundException) {
+            System.out.println("\nSD file could not be found. Test is ignored.");
+            Assume.assumeTrue(false);
+            return;
+        }
+        IAtomContainer tmpMolecule = tmpChebiReader.next();
+        tmpMolecule.removeProperty(CDKConstants.CTAB_SGROUPS);
+        tmpMolecule = this.applyFiltersAndPreprocessing(tmpMolecule);
+        CycleFinder tmpCycleFinder = Cycles.or(Cycles.all(), Cycles.vertexShort());
+        Aromaticity tmpCdkModel = new Aromaticity(ElectronDonation.cdk(), tmpCycleFinder);
+        tmpCdkModel.apply(tmpMolecule);
         
+        this.ertlFGFinderGenOff.find(tmpMolecule);
+        this.ertlFGFinderGenOff.markAtoms(tmpMolecule);
+        
+        List<IAtomContainer> tmpFunctionalGroups = this.ertlFGFinderGenOff.extractGroups(tmpMolecule);
     }
     //</editor-fold>
     
