@@ -7,6 +7,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileWriter;
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -80,7 +81,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
     /**
      * SD file of ChEBI database to be analyzed
      */
-    private final String CHEBI_SD_FILE_NAME = "ChEBI_lite_3star.sdf";
+    private final String CHEBI_SD_FILE_NAME = "ChEBI_lite.sdf";//ChEBI_lite_3star.sdf";
     
     /**
      * Identifier string for ChEBI test
@@ -657,8 +658,8 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
      */
     @Ignore
     @Test
-    public void debuggingTests() throws Exception {
-        this.initialize("[empty]", "Debugging", true);
+    public void debuggingCloneTest() throws Exception {
+        this.initialize("[empty]", "DebuggingClone", true);
         String tmpChebi65490Smiles = "Cc1c(O)c2C(=O)C[C@H](Oc2c2C(c3ccccc3)C3=C(Oc12)C(C)(C)C(=O)C(C)(C)C3=O)c1ccccc1";
         SmilesParser tmpSmilesParser = new SmilesParser(DefaultChemObjectBuilder.getInstance());
         IAtomContainer tmpMolecule = tmpSmilesParser.parseSmiles(tmpChebi65490Smiles);
@@ -680,7 +681,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
             System.out.println("Functional group number " + (i+1));
             System.out.println("Pseudo SMILES of functional group: " + this.getPseudoSmilesCode(tmpFunctionalGroups.get(i)));
             System.out.println("Molfile of functional group:");
-            tmpMolFileWriter.write(tmpFunctionalGroups.get(0));
+            tmpMolFileWriter.write(tmpFunctionalGroups.get(i));
             System.out.println();
             List<IAtomContainer> tmpFunctionalGroupsCloned = new LinkedList<>();
             tmpFunctionalGroupsCloned.add(tmpFunctionalGroups.get(i).clone());
@@ -712,8 +713,8 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
      */
     @Ignore
     @Test
-    public void debuggingTest2() throws Exception {
-        this.initialize("ChEBI_52749.sdf", "Debugging2", false);
+    public void emptyStackTracesTest() throws Exception {
+        this.initialize("ChEBI_52749.sdf", "EmptyStackTraces", false);
         ClassLoader tmpClassLoader = this.getClass().getClassLoader();
         File tmpChebiSDFile = new File(tmpClassLoader.getResource(this.SDF_RESOURCES_PATH + "ChEBI_52749.sdf")
                 .getFile());
@@ -736,6 +737,85 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
         this.ertlFGFinderGenOff.markAtoms(tmpMolecule);
         
         List<IAtomContainer> tmpFunctionalGroups = this.ertlFGFinderGenOff.extractGroups(tmpMolecule);
+    }
+    
+    /**
+     * A test for analyzing one case of a pseudo smiles code that appears multiple times in the resulting csv file.
+     * Pseudo smiles code: O=C1N=C(C(=NR)C(=O)N1R)N(R)R
+     * 
+     * @throws java.lang.Exception
+     */
+    @Test
+    public void multipleAppearanceOfSmilesCodesTest() throws Exception {
+        this.initialize("[empty]", "MultipleAppearances", true);
+        String tmpChebi70986Smiles = "OC[C@@H](O)[C@@H](O)[C@@H](O)CN1CC(CO)N=C2C(=O)NC(=O)N=C12";
+        String tmpChebi16238Smiles = "Cc1cc2nc3c(nc(=O)[nH]c3=O)n(C[C@H](O)[C@H](O)[C@H](O)COP(O)(=O)OP(O)(=O)OC[C@H]3O[C@H]([C@H](O)[C@@H]3O)n3cnc4c(N)ncnc34)c2cc1C";
+        String tmpChebi57692Smiles = "Cc1cc2nc3c(nc(=O)[n-]c3=O)n(C[C@H](O)[C@H](O)[C@H](O)COP([O-])(=O)OP([O-])(=O)OC[C@H]3O[C@H]([C@H](O)[C@@H]3O)n3cnc4c(N)ncnc34)c2cc1C";
+        SmilesParser tmpSmilesParser = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        IAtomContainer tmp70986Mol = tmpSmilesParser.parseSmiles(tmpChebi70986Smiles);
+        IAtomContainer tmp16238Mol = tmpSmilesParser.parseSmiles(tmpChebi16238Smiles);
+        IAtomContainer tmp57692Mol = tmpSmilesParser.parseSmiles(tmpChebi57692Smiles);
+        MDLV2000Writer tmpMolFileWriter = new MDLV2000Writer(System.out);
+        tmp70986Mol = this.applyFiltersAndPreprocessing(tmp70986Mol);
+        tmp16238Mol = this.applyFiltersAndPreprocessing(tmp16238Mol);
+        tmp57692Mol = this.applyFiltersAndPreprocessing(tmp57692Mol);
+        Aromaticity.cdkLegacy().apply(tmp70986Mol);
+        Aromaticity.cdkLegacy().apply(tmp16238Mol);
+        Aromaticity.cdkLegacy().apply(tmp57692Mol);
+        IAtomContainer[] tmpMoleculesArray = {tmp70986Mol, tmp16238Mol, tmp57692Mol};
+        for (IAtomContainer tmpMolecule : tmpMoleculesArray) {
+            System.out.println("\n#############################\nNew molecule:\n");
+            this.ertlFGFinderGenOn.find(tmpMolecule);
+            this.ertlFGFinderGenOn.markAtoms(tmpMolecule);
+            List<IAtomContainer> tmpFunctionalGroups = this.ertlFGFinderGenOn.extractGroups(tmpMolecule);
+            tmpFunctionalGroups = this.ertlFGFinderGenOn.expandGeneralizedEnvironments(tmpFunctionalGroups);
+            for (int i = 0; i < tmpFunctionalGroups.size(); i++) {
+                if (this.getPseudoSmilesCode(tmpFunctionalGroups.get(i)).equals("[H]O[C]"))
+                    continue;
+                if (this.getPseudoSmilesCode(tmpFunctionalGroups.get(i)).equals("RN*(R)R"))
+                    continue;
+                System.out.println("----------------------------------------------------------");
+                System.out.println();
+                System.out.println("Functional group number " + (i+1));
+                System.out.println("Pseudo SMILES of functional group: " + this.getPseudoSmilesCode(tmpFunctionalGroups.get(i)));
+                System.out.println("Molfile of functional group:");
+                tmpMolFileWriter.write(tmpFunctionalGroups.get(i));
+                System.out.println("Hash code of functional group: " + this.molHashGenerator.generate(tmpFunctionalGroups.get(i)));
+                
+                System.out.println();
+            }
+        }
+    }
+    
+    /**
+     * Test that shows a resulting functional group with too many 'R' atoms.
+     * 
+     * @throws java.lang.Exception
+     */
+    @Test public void tooManyRsTest() throws Exception {
+        this.initialize("[empty]", "TooManyValences", true);
+        String tmpAmmoniaSmiles = "[H]N([H])[H]"; //CHEBI:16134
+        SmilesParser tmpSmilesParser = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        IAtomContainer tmpAmmoniaMol = tmpSmilesParser.parseSmiles(tmpAmmoniaSmiles);
+        MDLV2000Writer tmpMolFileWriter = new MDLV2000Writer(System.out);
+        tmpAmmoniaMol = this.applyFiltersAndPreprocessing(tmpAmmoniaMol);
+        Aromaticity.cdkLegacy().apply(tmpAmmoniaMol);
+        System.out.println("Molfile of 'parent' molecule:");
+        tmpMolFileWriter.write(tmpAmmoniaMol);
+        this.ertlFGFinderGenOn.find(tmpAmmoniaMol);
+        this.ertlFGFinderGenOn.markAtoms(tmpAmmoniaMol);
+        List<IAtomContainer> tmpFunctionalGroups = this.ertlFGFinderGenOn.extractGroups(tmpAmmoniaMol);
+        tmpFunctionalGroups = this.ertlFGFinderGenOn.expandGeneralizedEnvironments(tmpFunctionalGroups);
+        for (int i = 0; i < tmpFunctionalGroups.size(); i++) {
+            System.out.println("----------------------------------------------------------");
+            System.out.println();
+            System.out.println("Functional group number " + (i+1));
+            System.out.println("Pseudo SMILES of functional group: " + this.getPseudoSmilesCode(tmpFunctionalGroups.get(i)));
+            System.out.println("Molfile of functional group:");
+            tmpMolFileWriter.write(tmpFunctionalGroups.get(i));
+            System.out.println("Hash code of functional group: " + this.molHashGenerator.generate(tmpFunctionalGroups.get(i)));
+            System.out.println();
+        }
     }
     //</editor-fold>
     
@@ -1025,6 +1105,9 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
                 tmpNoFunctionalGroupsCounter++;
             }
         }
+        try {
+            aReader.close();
+        } catch (IOException anIOException) { }
         //Since the filters remain the same in every iteration filtered molecules must be logged only once
         //(assuming that only one SD file is analyzed in a test)
         if (!this.areFilteredMoleculesLogged) {
