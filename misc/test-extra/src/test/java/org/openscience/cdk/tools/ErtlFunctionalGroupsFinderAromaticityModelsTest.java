@@ -18,6 +18,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Pattern;
 import org.junit.Assume;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -441,7 +442,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
      * <p>
      * (Functional groups occurring multiple times in the same molecule are counted multiple times)
      * 
-     * @throws java.lang.Exception if initialize() throws an exception or an unexpected exception occures
+     * @throws java.lang.Exception if initialize() throws an exception or an unexpected exception occurRes
      */
     @Test
     public void analyzeChebi() throws Exception {
@@ -680,12 +681,16 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
             System.out.println();
             System.out.println("Functional group number " + (i+1));
             System.out.println("Pseudo SMILES of functional group: " + this.getPseudoSmilesCode(tmpFunctionalGroups.get(i)));
+            System.out.println("Number of implicit Hydrogens: " + AtomContainerManipulator.getImplicitHydrogenCount(tmpFunctionalGroups.get(i)));
+            System.out.println("Size of bond array: " + AtomContainerManipulator.getBondArray(tmpFunctionalGroups.get(i)).length);
             System.out.println("Molfile of functional group:");
             tmpMolFileWriter.write(tmpFunctionalGroups.get(i));
             System.out.println();
             List<IAtomContainer> tmpFunctionalGroupsCloned = new LinkedList<>();
             tmpFunctionalGroupsCloned.add(tmpFunctionalGroups.get(i).clone());
             System.out.println("Pseudo SMILES of cloned functional group: " + this.getPseudoSmilesCode(tmpFunctionalGroupsCloned.get(0)));
+            System.out.println("Number of implicit Hydrogens: " + AtomContainerManipulator.getImplicitHydrogenCount(tmpFunctionalGroupsCloned.get(0)));
+            System.out.println("Size of bond array: " + AtomContainerManipulator.getBondArray(tmpFunctionalGroupsCloned.get(0)).length);
             System.out.println("Molfile of cloned functional group:");
             tmpMolFileWriter.write(tmpFunctionalGroupsCloned.get(0));
             System.out.println();
@@ -693,11 +698,15 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
             tmpFunctionalGroupsGeneralized.add(tmpFunctionalGroups.get(i));
             tmpFunctionalGroupsGeneralized = this.ertlFGFinderGenOff.expandGeneralizedEnvironments(tmpFunctionalGroupsGeneralized);
             System.out.println("Pseudo SMILES of generalized functional group (without prior cloning): " + this.getPseudoSmilesCode(tmpFunctionalGroupsGeneralized.get(0)));
+            System.out.println("Number of implicit Hydrogens: " + AtomContainerManipulator.getImplicitHydrogenCount(tmpFunctionalGroupsGeneralized.get(0)));
+            System.out.println("Size of bond array: " + AtomContainerManipulator.getBondArray(tmpFunctionalGroupsGeneralized.get(0)).length);
             System.out.println("Molfile of generalized functional group (without prior cloning):");
             tmpMolFileWriter.write(tmpFunctionalGroupsGeneralized.get(0));
             System.out.println();
             List<IAtomContainer> tmpFunctionalGroupsClonedAndGeneralized = this.ertlFGFinderGenOff.expandGeneralizedEnvironments(tmpFunctionalGroupsCloned);
             System.out.println("Pseudo SMILES of generalized functional group with prior cloning: " + this.getPseudoSmilesCode(tmpFunctionalGroupsClonedAndGeneralized.get(0)));
+            System.out.println("Number of implicit Hydrogens: " + AtomContainerManipulator.getImplicitHydrogenCount(tmpFunctionalGroupsClonedAndGeneralized.get(0)));
+            System.out.println("Size of bond array: " + AtomContainerManipulator.getBondArray(tmpFunctionalGroupsClonedAndGeneralized.get(0)).length);
             System.out.println("Molfile of cloned and then generalized functional group:");
             tmpMolFileWriter.write(tmpFunctionalGroupsClonedAndGeneralized.get(0));
             System.out.println();
@@ -745,6 +754,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
      * 
      * @throws java.lang.Exception
      */
+    @Ignore
     @Test
     public void multipleAppearanceOfSmilesCodesTest() throws Exception {
         this.initialize("[empty]", "MultipleAppearances", true);
@@ -770,19 +780,17 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
             List<IAtomContainer> tmpFunctionalGroups = this.ertlFGFinderGenOn.extractGroups(tmpMolecule);
             tmpFunctionalGroups = this.ertlFGFinderGenOn.expandGeneralizedEnvironments(tmpFunctionalGroups);
             for (int i = 0; i < tmpFunctionalGroups.size(); i++) {
-                if (this.getPseudoSmilesCode(tmpFunctionalGroups.get(i)).equals("[H]O[C]"))
-                    continue;
-                if (this.getPseudoSmilesCode(tmpFunctionalGroups.get(i)).equals("RN*(R)R"))
-                    continue;
-                System.out.println("----------------------------------------------------------");
-                System.out.println();
-                System.out.println("Functional group number " + (i+1));
-                System.out.println("Pseudo SMILES of functional group: " + this.getPseudoSmilesCode(tmpFunctionalGroups.get(i)));
-                System.out.println("Molfile of functional group:");
-                tmpMolFileWriter.write(tmpFunctionalGroups.get(i));
-                System.out.println("Hash code of functional group: " + this.molHashGenerator.generate(tmpFunctionalGroups.get(i)));
-                
-                System.out.println();
+                //if (this.getPseudoSmilesCode(tmpFunctionalGroups.get(i)).equals("O=C1N=C(C(=NR)C(=O)N1R)N(R)R")) {
+                    System.out.println("----------------------------------------------------------");
+                    System.out.println();
+                    System.out.println("Functional group number " + (i+1));
+                    System.out.println("Pseudo SMILES of functional group: " + this.getPseudoSmilesCode(tmpFunctionalGroups.get(i)));
+                    System.out.println("Molfile of functional group:");
+                    tmpMolFileWriter.write(tmpFunctionalGroups.get(i));
+                    System.out.println("Hash code of functional group: " + this.molHashGenerator.generate(tmpFunctionalGroups.get(i)));
+
+                    System.out.println();
+                //}
             }
         }
     }
@@ -792,6 +800,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
      * 
      * @throws java.lang.Exception
      */
+    @Ignore
     @Test public void tooManyRsTest() throws Exception {
         this.initialize("[empty]", "TooManyValences", true);
         String tmpAmmoniaSmiles = "[H]N([H])[H]"; //CHEBI:16134
@@ -816,6 +825,38 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
             System.out.println("Hash code of functional group: " + this.molHashGenerator.generate(tmpFunctionalGroups.get(i)));
             System.out.println();
         }
+    }
+    
+    /**
+     * Test for demonstrating that the MoleculeHashGenerator (in its present settings) does not discriminate between 
+     * aromatic and non-aromatic functional groups.
+     * 
+     * @throws java.lang.Exception
+     */
+    @Ignore
+    @Test
+    public void aromaticityDiscriminationTest() throws Exception {
+        this.initialize("[empty]", "AromaticityDiscrimination", true);
+        String tmpAromaticGroupSmiles = "*n(*)*";
+        String tmpNonAromaticGroupSmiles = "*N(*)*";
+        SmilesParser tmpSmilesParser = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        IAtomContainer tmpAromMol = tmpSmilesParser.parseSmiles(tmpAromaticGroupSmiles);
+        IAtomContainer tmpNonAromMol = tmpSmilesParser.parseSmiles(tmpNonAromaticGroupSmiles);
+        AtomContainerManipulator.percieveAtomTypesAndConfigureAtoms(tmpAromMol);
+        AtomContainerManipulator.percieveAtomTypesAndConfigureAtoms(tmpNonAromMol);
+        Aromaticity.cdkLegacy().apply(tmpAromMol);
+        Aromaticity.cdkLegacy().apply(tmpNonAromMol);
+        for (IAtom tmpAtom : tmpAromMol.atoms()) {
+            if (tmpAtom.getSymbol().equals("N"))
+                tmpAtom.setIsAromatic(true);
+        }
+        System.out.println("Hash code of aromatic functional group:     " + this.molHashGenerator.generate(tmpAromMol));
+        System.out.println("Hash code of non-aromatic functional group: " + this.molHashGenerator.generate(tmpNonAromMol));
+        SmilesGenerator tmpSmilesGenerator = new SmilesGenerator(SmiFlavor.UseAromaticSymbols);
+        System.out.println("SMILES code of aromatic functional group:     " + tmpSmilesGenerator.create(tmpAromMol));
+        System.out.println("SMILES code of non-aromatic functional group: " + tmpSmilesGenerator.create(tmpNonAromMol));
+        System.out.println();
+        
     }
     //</editor-fold>
     
@@ -932,7 +973,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
         
         this.smilesGenerator = new SmilesGenerator(this.SMILES_GENERATOR_OUTPUT_MODE);
         //examplary fast setup of the MoleculeHashGenerator without isotopic() and charged()
-        this.molHashGenerator = new HashGeneratorMaker()
+        this.molHashGenerator = new HashGeneratorMaker() //To do: Optimize!?
                 .depth(8)
                 .elemental()
                 .orbital()
@@ -1301,6 +1342,27 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
             //Case: functional group is already in the master HashMap
             if (this.masterHashMap.containsKey(tmpHashCode)) {
                 HashMap<String, Object> tmpInnerMap = (HashMap)this.masterHashMap.get(tmpHashCode);
+                //######################################################################################################
+                //Test for uniqueness of hash code to (pseudo) SMILES code relationship (N:1):
+                if (aSettingsKey.contains(this.GENERALIZATION_SETTINGS_KEY_ADDITION)) {
+                    String tmpSmilesCode;
+                    try {
+                        tmpSmilesCode = this.smilesGenerator.create(tmpFunctionalGroup);
+                    } catch (CDKException | NullPointerException anException) {
+                        this.logException(anException, aSettingsKey + "Creating SMILES code", tmpFunctionalGroup);
+                        tmpSmilesCode = this.SMILES_CODE_PLACEHOLDER;
+                    }
+                    String tmpSmilesCodeInMap = (String) tmpInnerMap.get(this.SMILES_CODE_KEY);
+                    if (!tmpSmilesCode.equals(tmpSmilesCodeInMap)) {
+                        System.out.println("\n" + tmpSmilesCode);
+                        System.out.println(tmpSmilesCodeInMap + "\n");
+                        /*this.logException(new Exception("Same hash code for different pseudo SMILES codes! "
+                                + "One was \"" + tmpPseudoSmilesCode
+                                + "\" and the other was \"" + tmpInnerMap.get(this.PSEUDO_SMILES_CODE_KEY) + "\"."),
+                                aSettingsKey + "(entering functional group into master map)", anFGContainingMolecule);*/
+                    }
+                }
+                //######################################################################################################
                 //And a key-value pair for this settings key is already present too -> raise frequency by one
                 if (tmpInnerMap.containsKey(aSettingsKey)) {
                     int tmpFrequency = (int)tmpInnerMap.get(aSettingsKey);
@@ -1316,6 +1378,20 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
                 tmpNewInnerMap.put(this.ATOMCONTAINER_KEY, tmpFunctionalGroup);
                 tmpNewInnerMap.put(this.MOLECULE_OF_ORIGIN_KEY, anFGContainingMolecule);
                 tmpNewInnerMap.put(aSettingsKey, 1);
+                String tmpSmilesCode;
+                String tmpPseudoSmilesCode;
+                try {
+                    //Creation of unique SMILES code
+                    tmpSmilesCode = this.smilesGenerator.create(tmpFunctionalGroup);
+                    //Creation of pseudo SMILES code
+                    tmpPseudoSmilesCode = this.getPseudoSmilesCode(tmpFunctionalGroup);
+                } catch (CDKException | NullPointerException | CloneNotSupportedException anException) {
+                    this.logException(anException, aSettingsKey + "Creating SMILES code", tmpFunctionalGroup);
+                    tmpSmilesCode = this.SMILES_CODE_PLACEHOLDER;
+                    tmpPseudoSmilesCode = this.SMILES_CODE_PLACEHOLDER;
+                }
+                tmpNewInnerMap.put(this.SMILES_CODE_KEY, tmpSmilesCode);
+                tmpNewInnerMap.put(this.PSEUDO_SMILES_CODE_KEY, tmpPseudoSmilesCode);
                 this.masterHashMap.put(tmpHashCode, tmpNewInnerMap);
             }
             tmpAlreadyEnteredFGsForThisMol.add(tmpHashCode);
@@ -1348,65 +1424,8 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
         while (tmpFunctionalGroupsIterator.hasNext()) {
             long tmpHashCode = (long)tmpFunctionalGroupsIterator.next();
             HashMap tmpInnerMap = (HashMap)this.masterHashMap.get(tmpHashCode);
-            String tmpSmilesCode;
-            String tmpPseudoSmilesCode;
-            IAtomContainer tmpFunctionalGroup = (IAtomContainer)tmpInnerMap.get(this.ATOMCONTAINER_KEY);
-            try {
-                //Creation of unique SMILES code
-                tmpSmilesCode = this.smilesGenerator.create(tmpFunctionalGroup);
-                //Creation of pseudo SMILES code
-                tmpPseudoSmilesCode = this.getPseudoSmilesCode(tmpFunctionalGroup);
-                /*######################################################################################################
-                for (IAtom tmpAtom : tmpFunctionalGroup.atoms()) {
-                    if (tmpAtom.isAromatic()) {
-                        IAtom tmpReplacementAtom = null;
-                        if ("C".equals(tmpAtom.getSymbol())) {
-                            tmpReplacementAtom = new Atom("Ce");
-                        } else if ("N".equals(tmpAtom.getSymbol())) {
-                            tmpReplacementAtom = new Atom("Nd");
-                        } else if ("S".equals(tmpAtom.getSymbol())) {
-                            tmpReplacementAtom = new Atom("Sm");
-                        } else if ("O".equals(tmpAtom.getSymbol())) {
-                            tmpReplacementAtom = new Atom("Os");
-                        }
-                        if (tmpReplacementAtom != null) {
-                            Integer tmpImplicitHydrogenCount = tmpAtom.getImplicitHydrogenCount();
-                            AtomContainerManipulator.replaceAtomByAtom(tmpFunctionalGroup, tmpAtom, tmpReplacementAtom);
-                            tmpReplacementAtom.setImplicitHydrogenCount(
-                                    tmpImplicitHydrogenCount == null ? 0 : tmpImplicitHydrogenCount);
-                        }
-                    }
-                    tmpAtom.setIsAromatic(false);
-                    if (tmpAtom instanceof IPseudoAtom && "R".equals(((IPseudoAtom)tmpAtom).getLabel())) {  
-                        //second condition: see creation of R atoms in ErtlFunctionalGroupsFinder
-                        IAtom tmpReplacementAtom = new Atom("Es");
-                        Integer tmpImplicitHydrogenCount = tmpAtom.getImplicitHydrogenCount();
-                        AtomContainerManipulator.replaceAtomByAtom(tmpFunctionalGroup, tmpAtom, tmpReplacementAtom);
-                        tmpReplacementAtom.setImplicitHydrogenCount(
-                                tmpImplicitHydrogenCount == null ? 0 : tmpImplicitHydrogenCount);
-                    }
-                }
-                for (IBond tmpBond : tmpFunctionalGroup.bonds()) {
-                    tmpBond.setIsAromatic(false);
-                }
-                tmpPseudoSmilesCode = this.smilesGenerator.create(tmpFunctionalGroup);
-                tmpPseudoSmilesCode = tmpPseudoSmilesCode
-                        .replaceAll("(\\[Es\\])", this.PSEUDO_SMILES_R_ATOM)
-                        .replaceAll("(Es)", this.PSEUDO_SMILES_R_ATOM)
-                        .replaceAll("(\\[Ce\\])", this.PSEUDO_SMILES_AROMATIC_CARBON)
-                        .replaceAll("(Ce)", this.PSEUDO_SMILES_AROMATIC_CARBON)
-                        .replaceAll("(\\[Nd\\])", this.PSEUDO_SMILES_AROMATIC_NITROGEN)
-                        .replaceAll("(Nd)", this.PSEUDO_SMILES_AROMATIC_NITROGEN)
-                        .replaceAll("(\\[Sm\\])", this.PSEUDO_SMILES_AROMATIC_SULPHUR)
-                        .replaceAll("(Sm)", this.PSEUDO_SMILES_AROMATIC_SULPHUR)
-                        .replaceAll("(\\[Os\\])", this.PSEUDO_SMILES_AROMATIC_OXYGEN)
-                        .replaceAll("(Os)", this.PSEUDO_SMILES_AROMATIC_OXYGEN);
-                ########################################################################################################*/
-            } catch (CDKException | NullPointerException | CloneNotSupportedException anException) {
-                this.logException(anException, "Creating SMILES code, no settings", tmpFunctionalGroup);
-                tmpSmilesCode = this.SMILES_CODE_PLACEHOLDER;
-                tmpPseudoSmilesCode = this.SMILES_CODE_PLACEHOLDER;
-            }
+            String tmpSmilesCode = (String) tmpInnerMap.get(this.SMILES_CODE_KEY);
+            String tmpPseudoSmilesCode = (String) tmpInnerMap.get(this.PSEUDO_SMILES_CODE_KEY);
             //Writing the record for this functional group
             String tmpRecord = tmpHashCode + this.OUTPUT_FILE_SEPERATOR + tmpPseudoSmilesCode 
                     + this.OUTPUT_FILE_SEPERATOR + tmpSmilesCode;
