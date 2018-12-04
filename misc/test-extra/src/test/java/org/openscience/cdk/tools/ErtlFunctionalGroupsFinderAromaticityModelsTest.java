@@ -34,6 +34,7 @@ import org.openscience.cdk.graph.ConnectivityChecker;
 import org.openscience.cdk.graph.CycleFinder;
 import org.openscience.cdk.graph.Cycles;
 import org.openscience.cdk.hash.AtomEncoder;
+import org.openscience.cdk.hash.BasicAtomEncoder;
 import org.openscience.cdk.hash.HashGeneratorMaker;
 import org.openscience.cdk.hash.MoleculeHashGenerator;
 import org.openscience.cdk.interfaces.IAtom;
@@ -757,7 +758,6 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
      * 
      * @throws java.lang.Exception
      */
-    @Ignore
     @Test
     public void multipleAppearanceOfSmilesCodesTest() throws Exception {
         this.initialize("[empty]", "MultipleAppearances", true);
@@ -1012,12 +1012,13 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
         System.out.println("\tThe absolute functional groups frequencies will be written to: " + tmpOutputFile.getName());
         
         this.smilesGenerator = new SmilesGenerator(this.SMILES_GENERATOR_OUTPUT_MODE);
-        //examplary fast setup of the MoleculeHashGenerator without isotopic() and charged() and with an additional AtomEncoder for aromaticity
         this.molHashGenerator = new HashGeneratorMaker()
                 .depth(8)
                 .elemental()
-                .orbital()
-                .encode(CustomAtomEncoder.AROMATICITY)
+                //following line is used instead of .orbital() because the atom hybridizations take more information into 
+                //account than the bond order sum but that is not required here
+                .encode(BasicAtomEncoder.BOND_ORDER_SUM)
+                .encode(CustomAtomEncoder.AROMATICITY) //See enum CustomAtomEncoder below
                 .molecular();
         this.ertlFGFinderGenOff = new ErtlFunctionalGroupsFinder(Mode.NO_GENERALIZATION);
         this.ertlFGFinderGenOn = new ErtlFunctionalGroupsFinder(Mode.DEFAULT);
@@ -1392,7 +1393,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
             //Case: functional group is already in the master HashMap
             if (this.masterHashMap.containsKey(tmpHashCode)) {
                 HashMap<String, Object> tmpInnerMap = (HashMap)this.masterHashMap.get(tmpHashCode);
-                /*######################################################################################################
+                //######################################################################################################
                 //Test for uniqueness of hash code to (pseudo) SMILES code relationship (N:1):
                 //Result: the different smiles codes that are assigned the same hash code are indeed indentical!
                 if (aSettingsKey.contains(this.GENERALIZATION_SETTINGS_KEY_ADDITION)) {
@@ -1407,13 +1408,13 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
                     if (!tmpSmilesCode.equals(tmpSmilesCodeInMap) && !tmpSmilesCodeInMap.replace("[", "]").equals(new StringBuilder(tmpSmilesCode.replace("[", "]")).reverse().toString())) {
                         System.out.println("\n" + tmpSmilesCode);
                         System.out.println(tmpSmilesCodeInMap + "\n");
-                        this.logException(new Exception("Same hash code for different pseudo SMILES codes! "
+                        /*this.logException(new Exception("Same hash code for different pseudo SMILES codes! "
                                 + "One was \"" + tmpSmilesCode
                                 + "\" and the other was \"" + tmpInnerMap.get(this.PSEUDO_SMILES_CODE_KEY) + "\"."),
-                                aSettingsKey + "(entering functional group into master map)", anFGContainingMolecule);
+                                aSettingsKey + "(entering functional group into master map)", anFGContainingMolecule);*/
                     }
                 }
-                ######################################################################################################*/
+                //######################################################################################################
                 //And a key-value pair for this settings key is already present too -> raise frequency by one
                 if (tmpInnerMap.containsKey(aSettingsKey)) {
                     int tmpFrequency = (int)tmpInnerMap.get(aSettingsKey);
