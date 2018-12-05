@@ -1,5 +1,5 @@
 /*
- * To do: Add CDK license header
+ * To do: Add license header
  */
 package org.openscience.cdk.tools;
 
@@ -124,9 +124,11 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
     /**
      * First line in the exceptions log file
      */
-    private final String EXCEPTIONS_LOG_FILE_HEADER = "Following molecules led to the specified exceptions:" + System.getProperty("line.separator")
+    private final String EXCEPTIONS_LOG_FILE_HEADER = "Following molecules led to the specified exceptions:" 
+            + System.getProperty("line.separator")
             + "(Note: If too many exceptions are thrown too fast the JVM stops filling in the complete stack trace. "
-            + "You need to be looking at an earlier stack trace to see the details." + System.getProperty("line.separator");
+            + "You need to be looking at an earlier stack trace to see the details." 
+            + System.getProperty("line.separator");
     
     /**
      * Name of file for logging filtered molecules
@@ -152,11 +154,6 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
      * Separator for file name segments (test identifier, file name, time stamp)
      */
     private final String FILE_NAME_ADDITION_SEPERATOR = "_";
-    
-    /**
-     * Key for the master HashMap's inner maps under which to store the IAtomContainer of a functional group
-     */
-    private final String ATOMCONTAINER_KEY = "molecule";
     
     /**
      * Key for the master HashMap's inner maps under which to store the ChEBI or ChEMBL id of an exemplary molecule 
@@ -196,7 +193,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
      * Message specifying that a molecule contains not allowed atomic numbers.
      */
     private final String FORBIDDEN_ATOMIC_NUMBER = "Contains one or more metal, metalloid or \"R\" atoms";
-//</editor-fold>
+    //</editor-fold>
     
     /**
      * All allowed atomic numbers to pass to the ErtlFunctionalGroupsFinder; 
@@ -290,7 +287,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
     private final String SMILES_CODE_PLACEHOLDER = "SMILES code could not be created";
     
     /**
-     * 
+     * Placeholder String for 'parent' molecules' ids, assigned in case they could not be read
      */
     private final String MOLECULE_OF_ORIGIN_ID_PLACEHOLDER = "no id for molecule of origin";
     //</editor-fold>
@@ -315,6 +312,16 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
      * Pseudo SMILES representation of an aromatic O atom
      */
     private final String PSEUDO_SMILES_AROMATIC_OXYGEN = "O*";
+    
+    /**
+     * Pseudo SMILES representation of an aromatic Se atom
+     */
+    private final String PSEUDO_SMILES_AROMATIC_SELENIUM = "Se*";
+    
+    /**
+     * Pseudo SMILES representation of an aromatic P atom
+     */
+    private final String PSEUDO_SMILES_AROMATIC_PHOSPHOR = "P*";
     
     /**
      * Pseudo SMILES representation of an undefined pseudo atom
@@ -344,7 +351,6 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
      * Load factor of the master HashMap
      */
     private final float MASTER_HASHMAP_LOAD_FACTOR = 0.9f;
-    
     //</editor-fold>
     
     //<editor-fold defaultstate="collapsed" desc="Variables">
@@ -438,20 +444,22 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
     //</editor-fold>
     
     //<editor-fold defaultstate="collapsed" desc="Tests">
+    
+    //<editor-fold defaultstate="collapsed" desc="Tests involving databases">
     /**
-     * Test for analyzing ChEBI database for all four different aromaticity models supplied by the cdk: daylight, cdk, 
-     * piBonds and cdkAllowingExocyclic
+     * Test for analyzing ChEBI database for all five different aromaticity models supplied by the cdk: daylight, cdk,
+     * piBonds, cdkAllowingExocyclic and cdkLegacy
      * <p>
      * (Functional groups occurring multiple times in the same molecule are counted multiple times)
-     * 
-     * @throws java.lang.Exception if initialize() throws an exception or an unexpected exception occurRes
+     *
+     * @throws java.lang.Exception if initialize() throws an exception or an unexpected exception occurs
      */
     @Test
     public void analyzeChebi() throws Exception {
         this.initialize(this.CHEBI_SD_FILE_NAME, this.CHEBI_TEST_IDENTIFIER, false);
         Assume.assumeTrue(this.isTestAbleToRun);
         
-        System.out.println("\nLoading file named: " + this.CHEBI_SD_FILE_NAME);
+        System.out.println("Loading file named: " + this.CHEBI_SD_FILE_NAME);
         ClassLoader tmpClassLoader = this.getClass().getClassLoader();
         File tmpChebiSDFile = new File(tmpClassLoader.getResource(this.SDF_RESOURCES_PATH + this.CHEBI_SD_FILE_NAME)
                 .getFile());
@@ -459,7 +467,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
         IteratingSDFReader[] tmpReaders = new IteratingSDFReader[tmpRequiredNumberOfReaders];
         try {
             for (int i = 0; i < tmpRequiredNumberOfReaders; i++) {
-                IteratingSDFReader tmpChebiReader = new IteratingSDFReader(new FileInputStream(tmpChebiSDFile), 
+                IteratingSDFReader tmpChebiReader = new IteratingSDFReader(new FileInputStream(tmpChebiSDFile),
                         DefaultChemObjectBuilder.getInstance(), true);
                 tmpReaders[i] = tmpChebiReader;
             }
@@ -492,12 +500,12 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
     }
     
     /**
-     * Test for analyzing ChEBI database for all four different aromaticity models supplied by the cdk: daylight, cdk, 
-     * piBonds and cdkAllowingExocyclic;
+     * Test for analyzing ChEBI database for all five different aromaticity models supplied by the cdk: daylight, cdk,
+     * piBonds, cdkAllowingExocyclic and cdkLegacy;
      * <p>
-     * Difference to analyzeChebi(): If the same functional group occurs multiple times in the same molecule 
+     * Difference to analyzeChebi(): If the same functional group occurs multiple times in the same molecule
      * it is counted only once
-     * 
+     *
      * @throws java.lang.Exception if initialize() throws an exception or an unexpected exception occurs
      */
     @Ignore
@@ -506,7 +514,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
         this.initialize(this.CHEBI_SD_FILE_NAME, this.CHEBI_NO_MULTIPLES_TEST_IDENTIFIER, false);
         Assume.assumeTrue(this.isTestAbleToRun);
         
-        System.out.println("\nLoading file named: " + this.CHEBI_SD_FILE_NAME);
+        System.out.println("Loading file named: " + this.CHEBI_SD_FILE_NAME);
         ClassLoader tmpClassLoader = this.getClass().getClassLoader();
         File tmpChebiSDFile = new File(tmpClassLoader.getResource(this.SDF_RESOURCES_PATH + this.CHEBI_SD_FILE_NAME)
                 .getFile());
@@ -514,7 +522,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
         IteratingSDFReader[] tmpReaders = new IteratingSDFReader[tmpRequiredNumberOfReaders];
         try {
             for (int i = 0; i < tmpRequiredNumberOfReaders; i++) {
-                IteratingSDFReader tmpChebiReader = new IteratingSDFReader(new FileInputStream(tmpChebiSDFile), 
+                IteratingSDFReader tmpChebiReader = new IteratingSDFReader(new FileInputStream(tmpChebiSDFile),
                         DefaultChemObjectBuilder.getInstance(), true);
                 tmpReaders[i] = tmpChebiReader;
             }
@@ -547,11 +555,11 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
     }
     
     /**
-     * Test for analyzing ChEMBL database for all four different aromaticity models supplied by the cdk: daylight, cdk, 
-     * piBonds and cdkAllowingExocyclic
+     * Test for analyzing ChEMBL database for all five different aromaticity models supplied by the cdk: daylight, cdk,
+     * piBonds, cdkAllowingExocyclic and cdkLegacy
      * <p>
      * (Functional groups occurring multiple times in the same molecule are counted multiple times)
-     * 
+     *
      * @throws java.lang.Exception if initialize() throws an exception or an unexpected exception occurs
      */
     @Ignore
@@ -560,7 +568,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
         this.initialize(this.CHEMBL_SD_FILE_NAME, this.CHEMBL_TEST_IDENTIFIER, false);
         Assume.assumeTrue(this.isTestAbleToRun);
         
-        System.out.println("\nLoading file named: " + this.CHEMBL_SD_FILE_NAME);
+        System.out.println("Loading file named: " + this.CHEMBL_SD_FILE_NAME);
         ClassLoader tmpClassLoader = this.getClass().getClassLoader();
         File tmpChebiSDFile = new File(tmpClassLoader.getResource(this.SDF_RESOURCES_PATH + this.CHEMBL_SD_FILE_NAME)
                 .getFile());
@@ -568,7 +576,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
         IteratingSDFReader[] tmpReaders = new IteratingSDFReader[tmpRequiredNumberOfReaders];
         try {
             for (int i = 0; i < tmpRequiredNumberOfReaders; i++) {
-                IteratingSDFReader tmpChebiReader = new IteratingSDFReader(new FileInputStream(tmpChebiSDFile), 
+                IteratingSDFReader tmpChebiReader = new IteratingSDFReader(new FileInputStream(tmpChebiSDFile),
                         DefaultChemObjectBuilder.getInstance(), true);
                 tmpReaders[i] = tmpChebiReader;
             }
@@ -601,11 +609,11 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
     }
     
     /**
-     * Test for analyzing ChEBI database for six different CycleFinder settings supplied by the cdk: all(), mcb(), 
+     * Test for analyzing ChEBI database for six different CycleFinder settings supplied by the cdk: all(), mcb(),
      * relevant(), essential(), tripleShort() and cdkAromaticSet()
      * <p>
      * (Functional groups occurring multiple times in the same molecule are counted multiple times)
-     * 
+     *
      * @throws java.lang.Exception if initialize() throws an exception or an unexpected exception occurs
      */
     @Ignore
@@ -614,7 +622,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
         this.initialize(this.CHEBI_SD_FILE_NAME, this.CYCLE_FINDER_TEST_IDENTIFIER, false);
         Assume.assumeTrue(this.isTestAbleToRun);
         
-        System.out.println("\nLoading file named: " + this.CHEBI_SD_FILE_NAME);
+        System.out.println("Loading file named: " + this.CHEBI_SD_FILE_NAME);
         ClassLoader tmpClassLoader = this.getClass().getClassLoader();
         File tmpChebiSDFile = new File(tmpClassLoader.getResource(this.SDF_RESOURCES_PATH + this.CHEBI_SD_FILE_NAME)
                 .getFile());
@@ -622,7 +630,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
         IteratingSDFReader[] tmpReaders = new IteratingSDFReader[tmpRequiredNumberOfReaders];
         try {
             for (int i = 0; i < tmpRequiredNumberOfReaders; i++) {
-                IteratingSDFReader tmpChebiReader = new IteratingSDFReader(new FileInputStream(tmpChebiSDFile), 
+                IteratingSDFReader tmpChebiReader = new IteratingSDFReader(new FileInputStream(tmpChebiSDFile),
                         DefaultChemObjectBuilder.getInstance(), true);
                 tmpReaders[i] = tmpChebiReader;
             }
@@ -653,17 +661,19 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
         System.out.println("\nFinished!");
         System.out.println("\nNumber of occured exceptions: " + this.exceptionsCounter);
     }
+    //</editor-fold>
     
+    //<editor-fold defaultstate="collapsed" desc="Tests for debugging persisting problems">
     //To do: Find the real reason for clone()'s abnormal behavior!
     /**
      * Test for finding the cause of incorrect valences in the pseudo SMILES code of generalized functional groups.
-     * 
+     *
      * @throws Exception for multiple causes
      */
     @Ignore
     @Test
     public void debuggingCloneTest() throws Exception {
-        this.initialize("[empty]", "DebuggingClone", true);
+        this.initialize("", "DebuggingClone", true);
         String tmpChebi65490Smiles = "Cc1c(O)c2C(=O)C[C@H](Oc2c2C(c3ccccc3)C3=C(Oc12)C(C)(C)C(=O)C(C)(C)C3=O)c1ccccc1";
         SmilesParser tmpSmilesParser = new SmilesParser(DefaultChemObjectBuilder.getInstance());
         IAtomContainer tmpMolecule = tmpSmilesParser.parseSmiles(tmpChebi65490Smiles);
@@ -717,105 +727,21 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
         }
     }
     
-    //To do: Omit!
     /**
-     * Test for proving exemplarily that empty stack traces in the exceptions log file are due to settings in the JVM
-     * and not empty by themselves. Also to see if these exceptions also occur in CDK methods. 
-     * 
-     * @throws Exception 
-     */
-    @Ignore
-    @Test
-    public void emptyStackTracesTest() throws Exception {
-        this.initialize("ChEBI_52749.sdf", "EmptyStackTraces", false);
-        ClassLoader tmpClassLoader = this.getClass().getClassLoader();
-        File tmpChebiSDFile = new File(tmpClassLoader.getResource(this.SDF_RESOURCES_PATH + "ChEBI_52749.sdf")
-                .getFile());
-        IteratingSDFReader tmpChebiReader;
-        try {
-            tmpChebiReader = new IteratingSDFReader(new FileInputStream(tmpChebiSDFile), DefaultChemObjectBuilder.getInstance(), true);
-        } catch (FileNotFoundException aFileNotFoundException) {
-            System.out.println("\nSD file could not be found. Test is ignored.");
-            Assume.assumeTrue(false);
-            return;
-        }
-        IAtomContainer tmpMolecule = tmpChebiReader.next();
-        tmpMolecule.removeProperty(CDKConstants.CTAB_SGROUPS);
-        tmpMolecule = this.applyFiltersAndPreprocessing(tmpMolecule);
-        CycleFinder tmpCycleFinder = Cycles.or(Cycles.all(), Cycles.vertexShort());
-        Aromaticity tmpCdkModel = new Aromaticity(ElectronDonation.cdk(), tmpCycleFinder);
-        tmpCdkModel.apply(tmpMolecule);
-        
-        this.ertlFGFinderGenOff.find(tmpMolecule);
-        this.ertlFGFinderGenOff.markAtoms(tmpMolecule);
-        
-        List<IAtomContainer> tmpFunctionalGroups = this.ertlFGFinderGenOff.extractGroups(tmpMolecule);
-    }
-    
-    /**
-     * A test for analyzing one case of a pseudo smiles code that appears multiple times in the resulting csv file.
-     * Pseudo smiles code: O=C1N=C(C(=NR)C(=O)N1R)N(R)R
-     * 
+     * Test that shows a resulting functional groups with too many 'R' atoms for input molecules with explicit hydrogens.
+     *
      * @throws java.lang.Exception
      */
-    @Test
-    public void multipleAppearanceOfSmilesCodesTest() throws Exception {
-        this.initialize("[empty]", "MultipleAppearances", true);
-        String tmpChebi70986Smiles = "OC[C@@H](O)[C@@H](O)[C@@H](O)CN1CC(CO)N=C2C(=O)NC(=O)N=C12";
-        String tmpChebi16238Smiles = "Cc1cc2nc3c(nc(=O)[nH]c3=O)n(C[C@H](O)[C@H](O)[C@H](O)COP(O)(=O)OP(O)(=O)OC[C@H]3O[C@H]([C@H](O)[C@@H]3O)n3cnc4c(N)ncnc34)c2cc1C";
-        String tmpChebi57692Smiles = "Cc1cc2nc3c(nc(=O)[n-]c3=O)n(C[C@H](O)[C@H](O)[C@H](O)COP([O-])(=O)OP([O-])(=O)OC[C@H]3O[C@H]([C@H](O)[C@@H]3O)n3cnc4c(N)ncnc34)c2cc1C";
+    @Test public void debuggingTooManyRsTest() throws Exception {
+        this.initialize("", "TooManyValences", true);
         SmilesParser tmpSmilesParser = new SmilesParser(DefaultChemObjectBuilder.getInstance());
-        IAtomContainer tmp70986Mol = tmpSmilesParser.parseSmiles(tmpChebi70986Smiles);
-        IAtomContainer tmp16238Mol = tmpSmilesParser.parseSmiles(tmpChebi16238Smiles);
-        IAtomContainer tmp57692Mol = tmpSmilesParser.parseSmiles(tmpChebi57692Smiles);
         MDLV2000Writer tmpMolFileWriter = new MDLV2000Writer(System.out);
-        tmp70986Mol = this.applyFiltersAndPreprocessing(tmp70986Mol);
-        tmp16238Mol = this.applyFiltersAndPreprocessing(tmp16238Mol);
-        tmp57692Mol = this.applyFiltersAndPreprocessing(tmp57692Mol);
-        Aromaticity.cdkLegacy().apply(tmp70986Mol);
-        Aromaticity.cdkLegacy().apply(tmp16238Mol);
-        Aromaticity.cdkLegacy().apply(tmp57692Mol);
-        IAtomContainer[] tmpMoleculesArray = {tmp70986Mol, tmp16238Mol, tmp57692Mol};
-        for (IAtomContainer tmpMolecule : tmpMoleculesArray) {
-            System.out.println("\n#############################\nNew molecule:\n");
-            this.ertlFGFinderGenOn.find(tmpMolecule);
-            this.ertlFGFinderGenOn.markAtoms(tmpMolecule);
-            List<IAtomContainer> tmpFunctionalGroups = this.ertlFGFinderGenOn.extractGroups(tmpMolecule);
-            tmpFunctionalGroups = this.ertlFGFinderGenOn.expandGeneralizedEnvironments(tmpFunctionalGroups);
-            for (int i = 0; i < tmpFunctionalGroups.size(); i++) {
-                if (this.getPseudoSmilesCode(tmpFunctionalGroups.get(i)).equals("O=C1N=C(C(=NR)C(=O)N1R)N(R)R")) {
-                    System.out.println("----------------------------------------------------------");
-                    System.out.println();
-                    System.out.println("Functional group number " + (i+1));
-                    System.out.println("Pseudo SMILES of functional group: " + this.getPseudoSmilesCode(tmpFunctionalGroups.get(i)));
-                    //System.out.println("Molfile of functional group:");
-                    //tmpMolFileWriter.write(tmpFunctionalGroups.get(i));
-                    System.out.println("Hash code of functional group: " + this.molHashGenerator.generate(tmpFunctionalGroups.get(i)));
-                    for (IAtom tmpAtom : tmpFunctionalGroups.get(i).atoms()) {
-                        System.out.println(tmpAtom.getSymbol() + " : " + tmpAtom.getHybridization());
-                    }
-                    System.out.println();
-                }
-            }
-        }
-    }
-    
-    /**
-     * Test that shows a resulting functional group with too many 'R' atoms.
-     * 
-     * @throws java.lang.Exception
-     */
-    @Ignore
-    @Test public void tooManyRsTest() throws Exception {
-        this.initialize("[empty]", "TooManyValences", true);
-        String tmpAmmoniaSmiles = "[H]N([H])[H]"; //CHEBI:16134
-        SmilesParser tmpSmilesParser = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        String tmpAmmoniaSmiles = "N([H])([H])[H]";//CHEBI:16134
         IAtomContainer tmpAmmoniaMol = tmpSmilesParser.parseSmiles(tmpAmmoniaSmiles);
-        MDLV2000Writer tmpMolFileWriter = new MDLV2000Writer(System.out);
         tmpAmmoniaMol = this.applyFiltersAndPreprocessing(tmpAmmoniaMol);
         Aromaticity.cdkLegacy().apply(tmpAmmoniaMol);
-        System.out.println("Molfile of 'parent' molecule:");
-        tmpMolFileWriter.write(tmpAmmoniaMol);
+        //System.out.println("Molfile of 'parent' molecule:");
+        //tmpMolFileWriter.write(tmpAmmoniaMol);
         this.ertlFGFinderGenOn.find(tmpAmmoniaMol);
         this.ertlFGFinderGenOn.markAtoms(tmpAmmoniaMol);
         List<IAtomContainer> tmpFunctionalGroups = this.ertlFGFinderGenOn.extractGroups(tmpAmmoniaMol);
@@ -830,74 +756,95 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
             System.out.println("Hash code of functional group: " + this.molHashGenerator.generate(tmpFunctionalGroups.get(i)));
             System.out.println();
         }
+        Assert.assertEquals("RN(R)R", this.getPseudoSmilesCode(tmpFunctionalGroups.get(0)));
     }
+    //</editor-fold>
     
+    //<editor-fold defaultstate="collapsed" desc="Other tests">
     /**
-     * Test for demonstrating that the MoleculeHashGenerator (in its present settings) does(!) discriminate between 
-     * aromatic and non-aromatic functional groups. (Thanks to the added CustomAtomEncoder.AROMATICITY)
-     * 
+     * Test for correct MoleculeHashGenerator settings/performance on some examples.
+     *
      * @throws java.lang.Exception
      */
     @Ignore
     @Test
-    public void aromaticityDiscriminationTest() throws Exception {
-        this.initialize("[empty]", "AromaticityDiscrimination", true);
-        String tmpAromaticGroupSmiles = "*n(*)*";
-        String tmpNonAromaticGroupSmiles = "*N(*)*";
+    public void testMoleculeHashGeneratorSettings() throws Exception {
+        this.initialize("", "HashGeneratorTest", true);
         SmilesParser tmpSmilesParser = new SmilesParser(DefaultChemObjectBuilder.getInstance());
-        IAtomContainer tmpAromMol = tmpSmilesParser.parseSmiles(tmpAromaticGroupSmiles);
-        IAtomContainer tmpNonAromMol = tmpSmilesParser.parseSmiles(tmpNonAromaticGroupSmiles);
-        AtomContainerManipulator.percieveAtomTypesAndConfigureAtoms(tmpAromMol);
-        AtomContainerManipulator.percieveAtomTypesAndConfigureAtoms(tmpNonAromMol);
-        Aromaticity.cdkLegacy().apply(tmpAromMol);
-        Aromaticity.cdkLegacy().apply(tmpNonAromMol);
+        
+        /*Chebi70986, Chebi16238 and Chebi57692 all contain the same functional group with pseudo SMILES code
+        "O=C1N=C(C(=NR)C(=O)N1R)N(R)R", but different hybridizations in the resulting atom containers. But their hash
+        codes should be the same under the given settings. This is tested exemplary for many similar cases*/
+        String[] tmpSmilesArray = {"OC[C@@H](O)[C@@H](O)[C@@H](O)CN1CC(CO)N=C2C(=O)NC(=O)N=C12",
+            "Cc1cc2nc3c(nc(=O)[nH]c3=O)n(C[C@H](O)[C@H](O)[C@H](O)COP(O)(=O)OP(O)(=O)OC[C@H]3O[C@H]([C@H](O)[C@@H]3O)n3cnc4c(N)ncnc34)c2cc1C",
+            "Cc1cc2nc3c(nc(=O)[n-]c3=O)n(C[C@H](O)[C@H](O)[C@H](O)COP([O-])(=O)OP([O-])(=O)OC[C@H]3O[C@H]([C@H](O)[C@@H]3O)n3cnc4c(N)ncnc34)c2cc1C"};
+        List<Long> tmpHashCodesList = new LinkedList<>();
+        for (String tmpSmilesCode : tmpSmilesArray) {
+            IAtomContainer tmpParsedMolecule = tmpSmilesParser.parseSmiles(tmpSmilesCode);
+            tmpParsedMolecule = this.applyFiltersAndPreprocessing(tmpParsedMolecule);
+            Aromaticity.cdkLegacy().apply(tmpParsedMolecule);
+            this.ertlFGFinderGenOn.find(tmpParsedMolecule);
+            this.ertlFGFinderGenOn.markAtoms(tmpParsedMolecule);
+            List<IAtomContainer> tmpFunctionalGroups = this.ertlFGFinderGenOn.extractGroups(tmpParsedMolecule);
+            tmpFunctionalGroups = this.ertlFGFinderGenOn.expandGeneralizedEnvironments(tmpFunctionalGroups);
+            for (IAtomContainer tmpFunctionalGroup : tmpFunctionalGroups) {
+                if (this.getPseudoSmilesCode(tmpFunctionalGroup).equals("O=C1N=C(C(=NR)C(=O)N1R)N(R)R")) {
+                    tmpHashCodesList.add(this.molHashGenerator.generate(tmpFunctionalGroup));
+                    /*System.out.println();
+                    for (IAtom tmpAtom : tmpFunctionalGroup.atoms()) {
+                    System.out.println(tmpAtom.getSymbol() + " : " + tmpAtom.getHybridization());
+                    }
+                    System.out.println();*/
+                }
+            }
+        }
+        for (Long tmpHashCode1 : tmpHashCodesList) {
+            for (Long tmpHashCode2 : tmpHashCodesList) {
+                Assert.assertEquals(tmpHashCode1.longValue(), tmpHashCode2.longValue());
+            }
+        }
+        
+        /*Functional groups like the tertiary amine or the hydroxyl group appear with aromatic and non-aromatic central
+        atoms. These two cases should be discrimated by the MoleculeHashGenerator under the given settings*/
+        String tmpTertiaryAmineSmiles = "*N(*)*";
+        IAtomContainer tmpAromMol = tmpSmilesParser.parseSmiles(tmpTertiaryAmineSmiles);
+        IAtomContainer tmpNonAromMol = tmpSmilesParser.parseSmiles(tmpTertiaryAmineSmiles);
         for (IAtom tmpAtom : tmpAromMol.atoms()) {
             if (tmpAtom.getSymbol().equals("N"))
                 tmpAtom.setIsAromatic(true);
         }
-        System.out.println("Hash code of aromatic functional group:     " + this.molHashGenerator.generate(tmpAromMol));
-        System.out.println("Hash code of non-aromatic functional group: " + this.molHashGenerator.generate(tmpNonAromMol));
-        SmilesGenerator tmpSmilesGenerator = new SmilesGenerator(SmiFlavor.UseAromaticSymbols);
         Assert.assertNotEquals(this.molHashGenerator.generate(tmpAromMol), this.molHashGenerator.generate(tmpNonAromMol));
-        System.out.println("SMILES code of aromatic functional group:     " + tmpSmilesGenerator.create(tmpAromMol));
-        System.out.println("SMILES code of non-aromatic functional group: " + tmpSmilesGenerator.create(tmpNonAromMol));
-        System.out.println();
-        
-    }
-    
-    //To do: Is it neccessary to discrimante between these two?
-    /**
-     * Test for demonstrating that the MoleculeHashGenerator (in its present settings) does not discriminate between 
-     * the functional groups [P]=[P] and P#P.
-     * 
-     * @throws java.lang.Exception
-     */
-    @Ignore
-    @Test
-    public void discriminationTest() throws Exception {
-        this.initialize("[empty]", "Discrimination", true);
-        String tmpSmilesOne = "[P]=[P]";
-        String tmpSmilesTwo = "P#P";
-        SmilesParser tmpSmilesParser = new SmilesParser(DefaultChemObjectBuilder.getInstance());
-        IAtomContainer tmpMolOne = tmpSmilesParser.parseSmiles(tmpSmilesOne);
-        IAtomContainer tmpMolTwo = tmpSmilesParser.parseSmiles(tmpSmilesTwo);
-        AtomContainerManipulator.percieveAtomTypesAndConfigureAtoms(tmpMolOne);
-        AtomContainerManipulator.percieveAtomTypesAndConfigureAtoms(tmpMolTwo);
-        Aromaticity.cdkLegacy().apply(tmpMolOne);
-        Aromaticity.cdkLegacy().apply(tmpMolTwo);
-        for (IAtom tmpAtom : tmpMolOne.atoms()) {
-            if (tmpAtom.getSymbol().equals("N"))
+        String tmpHydroxylGroupSmiles = "[H]O[C]";
+        tmpAromMol = tmpSmilesParser.parseSmiles(tmpHydroxylGroupSmiles);
+        tmpNonAromMol = tmpSmilesParser.parseSmiles(tmpHydroxylGroupSmiles);
+        for (IAtom tmpAtom : tmpAromMol.atoms()) {
+            if (tmpAtom.getSymbol().equals("C"))
                 tmpAtom.setIsAromatic(true);
         }
-        System.out.println("Hash code of aromatic functional group:     " + this.molHashGenerator.generate(tmpMolOne));
-        System.out.println("Hash code of non-aromatic functional group: " + this.molHashGenerator.generate(tmpMolTwo));
-        SmilesGenerator tmpSmilesGenerator = new SmilesGenerator(SmiFlavor.UseAromaticSymbols);
-        Assert.assertNotEquals(this.molHashGenerator.generate(tmpMolOne), this.molHashGenerator.generate(tmpMolTwo));
-        System.out.println("SMILES code of aromatic functional group:     " + tmpSmilesGenerator.create(tmpMolOne));
-        System.out.println("SMILES code of non-aromatic functional group: " + tmpSmilesGenerator.create(tmpMolTwo));
-        System.out.println();
+        Assert.assertNotEquals(this.molHashGenerator.generate(tmpAromMol), this.molHashGenerator.generate(tmpNonAromMol));
         
+        /*The following are examples of different (unique!) SMILES codes representing the same functional groups.
+        They should be assigned the same hash code*/
+        HashMap<String,String> tmpEquivalentSmilesMap = new HashMap<>(20);
+        tmpEquivalentSmilesMap.put("*[N](*)=C(N(*)*)N(*)*", "*N(*)C(=[N](*)*)N(*)*");
+        tmpEquivalentSmilesMap.put("*SC1=[N](*)[C]=[C]N1*", "*SC=1N(*)[C]=[C][N]1*");
+        tmpEquivalentSmilesMap.put("*[N]1=[C][C]=[C]N1*", "*N1[C]=[C][C]=[N]1*");
+        tmpEquivalentSmilesMap.put("*[N](*)=[C]N(*)*", "*N(*)[C]=[N](*)*");
+        tmpEquivalentSmilesMap.put("*N(*)[C]=[C][C]=[C][C]=[C][C]=[C][C]=[N](*)*", "*[N](*)=[C][C]=[C][C]=[C][C]=[C][C]=[C]N(*)*");
+        tmpEquivalentSmilesMap.put("*[N](*)=C(N(*)*)N(*)P(=O)(O[H])O[H]", "*N(*)C(=[N](*)*)N(*)P(=O)(O[H])O[H]");
+        tmpEquivalentSmilesMap.put("[O]I(=O)=O", "O=I(=O)[O]");
+        tmpEquivalentSmilesMap.put("[O]Br(=O)=O", "O=Br(=O)[O]");
+        tmpEquivalentSmilesMap.put("[O]Cl(=O)(=O)=O", "O=Cl(=O)(=O)[O]");
+        tmpEquivalentSmilesMap.put("[C]=[C][C]=[C]C#C[C]=[C]C#[C]", "[C]#C[C]=[C]C#C[C]=[C][C]=[C]");
+        tmpEquivalentSmilesMap.put("*N1[C]=[C][C]=[N]1*", "*[N]1=[C][C]=[C]N1*");
+        for (String tmpKeySmiles : tmpEquivalentSmilesMap.keySet()) {
+            IAtomContainer tmpKeyMol = tmpSmilesParser.parseSmiles(tmpKeySmiles);
+            IAtomContainer tmpValueMol = tmpSmilesParser.parseSmiles(tmpEquivalentSmilesMap.get(tmpKeySmiles));
+            Assert.assertEquals(this.molHashGenerator.generate(tmpKeyMol), this.molHashGenerator.generate(tmpValueMol));
+        }
     }
+    //</editor-fold>
+    
     //</editor-fold>
     
     //<editor-fold defaultstate="collapsed" desc="Private methods">
@@ -907,7 +854,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
      * @param aFileName name of the SD file to analyze for a quick pre-check if it is present and the test is therefore 
      * meant to run
      * @param aTestIdentifier a folder with this name will be created in the output directory and it will be added to 
-     * the output and log files' names for association of test and files
+     * the output and log files' names for association of test and files; may be null or empty
      * @param aRunAnyway if true, the test is not aborted even if the file with aFileName can not be found
      * @throws java.lang.Exception if one the FileWriter instances can not be instantiated or more than 
      * Integer.MAX-VALUE tests are to be run this minute (error in the naming of output files) or an unexpected 
@@ -922,17 +869,21 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
         ClassLoader tmpClassLoader = this.getClass().getClassLoader();
         File tmpSDFile;
         try {
+            if (aFileName.equals("") || aFileName == null) {
+                aFileName = "[no name was given]";
+                throw new NullPointerException();
+            }
             tmpSDFile = new File(tmpClassLoader.getResource(this.SDF_RESOURCES_PATH + aFileName).getFile());
         } catch (NullPointerException aNullPointerException) {
             //getFile() throws a NullPointerException if the required file can not be found
             System.out.println("\n\tUnable to find a file named " + aFileName + " in the resources directory.");
             if (!aRunAnyway) {
-                System.out.println("\nTest is ignored.");
+                System.out.println("Test is ignored.");
                 this.isTestAbleToRun = false;
                 Assume.assumeTrue(false);
                 return;
             } else {
-                System.out.println("\n\tAs specified, the test will be run anyway.");
+                System.out.println("\tAs specified, the test will be run anyway.");
             }
         }
         //Determine the output directory
@@ -977,7 +928,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
         this.exceptionsPrintWriter = new PrintWriter(tmpExceptionsLogFileWriter);
         this.exceptionsPrintWriter.println(this.EXCEPTIONS_LOG_FILE_HEADER);
         this.exceptionsPrintWriter.flush();
-        System.out.println("\n\tExceptions will be written to: " + tmpExceptionsLogFile.getName());
+        System.out.println("\tExceptions will be written to: " + tmpExceptionsLogFile.getName());
         //Set up filtered molecules log file
         File tmpFilteredMoleculesFile;
         if (tmpNumberAddedToFileName) {
@@ -1032,7 +983,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
             tmpMetalNumbersInt[i] = Integer.parseInt(tmpMetalNumbersStrings[i]);
         }
         this.nonMetallicAtomicNumbersSet = new HashSet(Arrays.asList(tmpMetalNumbersInt));
-        System.out.println("\n\tDone initializing class variables.");
+        System.out.println("\n\tDone initializing class variables.\n");
     }
     
     /**
@@ -1107,51 +1058,6 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
                     tmpSettingsKeyForLogging += this.NEUTRALIZED_SETTINGS_KEY_ADDITION;
                 }
                 
-                /*######################################################################################################
-                //Filter molecules with atom or bond count zero
-                boolean tmpIsAtomOrBondCountZero = this.applyNoAtomOrBondFilter(tmpMolecule);
-                if (tmpIsAtomOrBondCountZero) {
-                    tmpCauseForFiltering = "Atom or bond count 0";
-                    tmpFilteredMoleculesCounter++;
-                    tmpNoAtomOrBondCounter++;
-                    if (!this.areFilteredMoleculesLogged) {
-                        this.logFilteredMolecule(tmpMolecule, tmpFilteredMoleculesCounter, tmpCauseForFiltering);
-                    }
-                    continue;
-                }
-                AtomContainerManipulator.percieveAtomTypesAndConfigureAtoms(tmpMolecule);
-                //Preprocessing: From structures containing two or more unconnected structures (e.g. ions) 
-                //choose the largest structure for analysis
-                //This step must be done prior to the next step!
-                tmpMolecule = this.applySelectBiggestFragmentPreprocessing(tmpMolecule);
-                if (this.isStructureUnconnected(tmpMolecule)) {
-                    tmpUnconnectedCounter++;
-                    tmpMolecule = this.applySelectBiggestFragmentPreprocessing(tmpMolecule);
-                    tmpSettingsKeyForLogging += this.FRAGMENT_SELECTED_SETTINGS_KEY_ADDITION;
-                }
-                //Filter molecules containing metals, metalloids or "R" atoms
-                boolean tmpIsForbiddenAtomicNumberDetected = this.applyAllowedElementsFilter(tmpMolecule);
-                if (tmpIsForbiddenAtomicNumberDetected) {
-                    tmpCauseForFiltering = "Contains one or more metal, metalloid or \"R\" atoms";
-                    tmpFilteredMoleculesCounter++;
-                    tmpMetallicCounter++;
-                    if (!this.areFilteredMoleculesLogged) {
-                        if (tmpOriginalMolecule != null) {
-                            this.logFilteredMolecule(tmpOriginalMolecule, tmpFilteredMoleculesCounter, tmpCauseForFiltering);
-                        } else {
-                            this.logFilteredMolecule(tmpMolecule, tmpFilteredMoleculesCounter, tmpCauseForFiltering);
-                        }
-                    }
-                    continue;
-                }
-                //Preprocessing: Neutralize charges
-                boolean isAChargeNeutralized = this.applyNeutralizeChargesPreprocessing(tmpMolecule);
-                if (isAChargeNeutralized) {
-                    tmpSettingsKeyForLogging += this.NEUTRALIZED_SETTINGS_KEY_ADDITION;
-                    tmpChargeCounter++;
-                }
-                ########################################################################################################*/
-                
                 anAromaticity.apply(tmpMolecule);
                 //Now the analysis of functional groups (will be altered for final release):
                 this.ertlFGFinderGenOff.find(tmpMolecule);
@@ -1174,8 +1080,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
                 continue;
             }
             if (!(tmpFunctionalGroups == null || tmpFunctionalGroups.isEmpty())) {
-                //Assumption: If a molecule does not have FGs without generalization it does not have FGs 
-                //with generalization either
+                //If a molecule does not have FGs without generalization it does not have FGs with generalization either
                 this.enterFunctionalGroupsIntoMasterMap(tmpFunctionalGroups, 
                         aSettingsKey, 
                         anAreMultiplesCounted, 
@@ -1236,7 +1141,12 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
             aMolecule.setProperty(this.CAUSE_FOR_FILTERING_PROPERTY_KEY, this.ATOM_OR_BOND_COUNT_ZERO);
             return aMolecule;
         }
-        AtomContainerManipulator.percieveAtomTypesAndConfigureAtoms(aMolecule);        
+        AtomContainerManipulator.percieveAtomTypesAndConfigureAtoms(aMolecule);
+        //##############################################################################################################
+        //Test for solving problems with explicit hydrogens in the input molecules
+        AtomContainerManipulator.suppressHydrogens(aMolecule);
+        CDKHydrogenAdder.getInstance(aMolecule.getBuilder()).addImplicitHydrogens(aMolecule);
+        //##############################################################################################################
         //Preprocessing: From structures containing two or more unconnected structures (e.g. ions) 
         //choose the largest structure for analysis
         //This step must be done prior to the next step!
@@ -1341,8 +1251,6 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
         for (IAtom tmpAtom : aMolecule.atoms()) {
             if (tmpAtom.getFormalCharge() != 0) {
                 tmpAtom.setFormalCharge(0);
-                //Adjust number of neighbours, number of lone pairs and number of pi bonds to get the right hybridization?
-                //see Groovy Cheminformatics with the Chemistry Development Kit p96
                 CDKHydrogenAdder tmpHAdder = CDKHydrogenAdder.getInstance(aMolecule.getBuilder());
                 CDKAtomTypeMatcher tmpMatcher = CDKAtomTypeMatcher.getInstance(aMolecule.getBuilder());
                 IAtomType tmpMatchedType = tmpMatcher.findMatchingAtomType(aMolecule, tmpAtom);
@@ -1378,13 +1286,6 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
         }
         List<Long> tmpAlreadyEnteredFGsForThisMol = new LinkedList<>();
         for (IAtomContainer tmpFunctionalGroup : aFunctionalGroupsList) {
-            try {
-                /*Doing this again here before hash code generation (though rather unneccessary) decreases the number of 
-                functional groups that are assigned identical (pseudo) smiles codes but different hash codes*/
-                AtomContainerManipulator.percieveAtomTypesAndConfigureAtoms(tmpFunctionalGroup);
-            } catch (CDKException ex) {
-                //Do nothing
-            }
             long tmpHashCode = this.molHashGenerator.generate(tmpFunctionalGroup);
             //Case: Multiples are counted only once and the functional group was already entered for this molecule
             if (!anAreMultiplesCounted && tmpAlreadyEnteredFGsForThisMol.contains(tmpHashCode)) {
@@ -1393,28 +1294,6 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
             //Case: functional group is already in the master HashMap
             if (this.masterHashMap.containsKey(tmpHashCode)) {
                 HashMap<String, Object> tmpInnerMap = (HashMap)this.masterHashMap.get(tmpHashCode);
-                //######################################################################################################
-                //Test for uniqueness of hash code to (pseudo) SMILES code relationship (N:1):
-                //Result: the different smiles codes that are assigned the same hash code are indeed indentical!
-                if (aSettingsKey.contains(this.GENERALIZATION_SETTINGS_KEY_ADDITION)) {
-                    String tmpSmilesCode;
-                    try {
-                        tmpSmilesCode = this.smilesGenerator.create(tmpFunctionalGroup);
-                    } catch (CDKException | NullPointerException anException) {
-                        this.logException(anException, aSettingsKey + "Creating SMILES code", tmpFunctionalGroup);
-                        tmpSmilesCode = this.SMILES_CODE_PLACEHOLDER;
-                    }
-                    String tmpSmilesCodeInMap = (String) tmpInnerMap.get(this.SMILES_CODE_KEY);
-                    if (!tmpSmilesCode.equals(tmpSmilesCodeInMap) && !tmpSmilesCodeInMap.replace("[", "]").equals(new StringBuilder(tmpSmilesCode.replace("[", "]")).reverse().toString())) {
-                        System.out.println("\n" + tmpSmilesCode);
-                        System.out.println(tmpSmilesCodeInMap + "\n");
-                        /*this.logException(new Exception("Same hash code for different pseudo SMILES codes! "
-                                + "One was \"" + tmpSmilesCode
-                                + "\" and the other was \"" + tmpInnerMap.get(this.PSEUDO_SMILES_CODE_KEY) + "\"."),
-                                aSettingsKey + "(entering functional group into master map)", anFGContainingMolecule);*/
-                    }
-                }
-                //######################################################################################################
                 //And a key-value pair for this settings key is already present too -> raise frequency by one
                 if (tmpInnerMap.containsKey(aSettingsKey)) {
                     int tmpFrequency = (int)tmpInnerMap.get(aSettingsKey);
@@ -1427,7 +1306,6 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
             //The functional group did not occur before -> create a new inner HashMap for this molecule
             } else {
                 HashMap<String,Object> tmpNewInnerMap = new HashMap(this.INNER_HASHMAPS_INITIAL_CAPACITY);
-                tmpNewInnerMap.put(this.ATOMCONTAINER_KEY, tmpFunctionalGroup);
                 tmpNewInnerMap.put(this.MOLECULE_OF_ORIGIN_KEY, anFGContainingMolecule);
                 tmpNewInnerMap.put(aSettingsKey, 1);
                 String tmpSmilesCode;
@@ -1447,8 +1325,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
                 this.masterHashMap.put(tmpHashCode, tmpNewInnerMap);
             }
             tmpAlreadyEnteredFGsForThisMol.add(tmpHashCode);
-        }
-        
+        }   
     }
     
     /**
@@ -1486,18 +1363,19 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
                 }
                 tmpRecord += this.OUTPUT_FILE_SEPERATOR + tmpInnerMap.get(tmpSettingsKey);
             }
-            
             IAtomContainer tmpMoleculeOfOrigin = (IAtomContainer)tmpInnerMap.get(this.MOLECULE_OF_ORIGIN_KEY);
             String tmpChebiId = tmpMoleculeOfOrigin.getProperty("ChEBI ID");
             String tmpChemblId = tmpMoleculeOfOrigin.getProperty("chembl_id");
+            String tmpCdkTitle = tmpMoleculeOfOrigin.getProperty(CDKConstants.TITLE);
             if (tmpChebiId != null) {
                 tmpRecord += this.OUTPUT_FILE_SEPERATOR + tmpChebiId;
             } else if (tmpChemblId != null) {
                 tmpRecord += this.OUTPUT_FILE_SEPERATOR + tmpChemblId;
+            } else if (tmpCdkTitle != null) {
+                tmpRecord += this.OUTPUT_FILE_SEPERATOR + tmpCdkTitle;
             } else {
                 tmpRecord += this.OUTPUT_FILE_SEPERATOR + this.MOLECULE_OF_ORIGIN_ID_PLACEHOLDER;
             }
-            
             this.dataOutputPrintWriter.println(tmpRecord);
             this.dataOutputPrintWriter.flush();
             tmpFunctionalGroupsIterator.remove();
@@ -1509,7 +1387,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
     
     /**
      * Returns the Pseudo SMILES code of the given molecule. Pseudo atoms are represented by 'R' atoms and aromatic 
-     * atoms will be marked by *.
+     * (C, S, O, P, Se, N) atoms will be marked by *.
      * 
      * @param aMolecule the molecule to be represented by the Pseudo SMILES string
      * @return the Pseudo SMILES representation of the given molecule
@@ -1534,6 +1412,12 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
                         break;
                     case "O":
                         tmpReplacementAtom = new Atom("Os");
+                        break;
+                    case "Se":
+                        tmpReplacementAtom = new Atom("Sc");
+                        break;
+                    case "P":
+                        tmpReplacementAtom = new Atom("Pm");
                         break;
                     default:
                         break;
@@ -1569,7 +1453,11 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
                 .replaceAll("(\\[Sm\\])", this.PSEUDO_SMILES_AROMATIC_SULPHUR)
                 .replaceAll("(Sm)", this.PSEUDO_SMILES_AROMATIC_SULPHUR)
                 .replaceAll("(\\[Os\\])", this.PSEUDO_SMILES_AROMATIC_OXYGEN)
-                .replaceAll("(Os)", this.PSEUDO_SMILES_AROMATIC_OXYGEN);
+                .replaceAll("(Os)", this.PSEUDO_SMILES_AROMATIC_OXYGEN)
+                .replaceAll("(\\[Sc\\])", this.PSEUDO_SMILES_AROMATIC_SELENIUM)
+                .replaceAll("(Sc)", this.PSEUDO_SMILES_AROMATIC_SELENIUM)
+                .replaceAll("(\\[Pm\\])", this.PSEUDO_SMILES_AROMATIC_PHOSPHOR)
+                .replaceAll("(Pm)", this.PSEUDO_SMILES_AROMATIC_PHOSPHOR);
         return tmpPseudoSmilesCode;
     }
     
@@ -1589,7 +1477,6 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
         } catch (CDKException | NullPointerException anException){
             this.filteredMoleculesPrintWriter.println("SMILES code: " + this.SMILES_CODE_PLACEHOLDER);
         }
-        //aMolecule.getProperty(CDKConstants.TITLE);?
         String tmpChebiName = aMolecule.getProperty("ChEBI Name");
         if (tmpChebiName != null)
             this.filteredMoleculesPrintWriter.println("ChEBI name: " + tmpChebiName);
@@ -1599,6 +1486,9 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
         String tmpChemblId = aMolecule.getProperty("chembl_id");
         if (tmpChemblId != null)
             this.filteredMoleculesPrintWriter.println("ChEMBL ID: " + tmpChemblId);
+        String tmpCdkTitle = aMolecule.getProperty(CDKConstants.TITLE);
+        if (tmpCdkTitle != null)
+            this.filteredMoleculesPrintWriter.println("CDK title: " + tmpCdkTitle);
         this.filteredMoleculesPrintWriter.println("Cause: " + aCause);
         this.filteredMoleculesPrintWriter.flush();
     }
@@ -1633,6 +1523,9 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
         String tmpChemblId = aMolecule.getProperty("chembl_id");
         if (tmpChemblId != null)
             this.exceptionsPrintWriter.println("ChEMBL ID: " + tmpChemblId);
+        String tmpCdkTitle = aMolecule.getProperty(CDKConstants.TITLE);
+        if (tmpCdkTitle != null)
+            this.exceptionsPrintWriter.println("CDK title: " + tmpCdkTitle);
         anException.printStackTrace(this.exceptionsPrintWriter);
         this.exceptionsPrintWriter.flush();
     }
