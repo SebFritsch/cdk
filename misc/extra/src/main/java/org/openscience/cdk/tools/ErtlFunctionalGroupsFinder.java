@@ -435,13 +435,7 @@ public class ErtlFunctionalGroupsFinder {
 					IBond connectedBond = bondMap.get(currentIdx, connectedIdx);
 					
 					EnvironmentCalCType type = null;
-					if(connectedAtom.getAtomicNumber() == 1) {
-						if(currentAtom.getImplicitHydrogenCount() == null)
-							currentAtom.setImplicitHydrogenCount(1);
-						else
-							currentAtom.setImplicitHydrogenCount(currentAtom.getImplicitHydrogenCount() + 1);
-					}
-					else if (connectedAtom.getAtomicNumber() == 6) {
+					if (connectedAtom.getAtomicNumber() == 6) {
 						if(connectedAtom.isAromatic())
 							type = EnvironmentCalCType.C_AROMATIC;
 						else
