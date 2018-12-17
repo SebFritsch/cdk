@@ -112,7 +112,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
     private final String CYCLE_FINDER_TEST_IDENTIFIER = "CycleFinderTest";
     
     /**
-     * Name of file for logging occured exceptions with causing molecules
+     * Name of file for logging occurred exceptions with causing molecules
      */
     private final String EXCEPTIONS_LOG_FILE_NAME = "Exceptions_Log";
     
@@ -670,7 +670,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
      *
      * @throws Exception for multiple causes
      */
-    @Ignore
+    /*@Ignore
     @Test
     public void debuggingCloneTest() throws Exception {
         this.initialize("", "DebuggingClone", true);
@@ -725,7 +725,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
             System.out.println();
             System.out.println();
         }
-    }
+    }*/
     
     /**
      * Test that shows a resulting functional groups with too many 'R' atoms for input molecules with explicit hydrogens.
@@ -742,10 +742,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
         Aromaticity.cdkLegacy().apply(tmpAmmoniaMol);
         //System.out.println("Molfile of 'parent' molecule:");
         //tmpMolFileWriter.write(tmpAmmoniaMol);
-        this.ertlFGFinderGenOn.find(tmpAmmoniaMol);
-        this.ertlFGFinderGenOn.markAtoms(tmpAmmoniaMol);
-        List<IAtomContainer> tmpFunctionalGroups = this.ertlFGFinderGenOn.extractGroups(tmpAmmoniaMol);
-        tmpFunctionalGroups = this.ertlFGFinderGenOn.expandGeneralizedEnvironments(tmpFunctionalGroups);
+        List<IAtomContainer> tmpFunctionalGroups = this.ertlFGFinderGenOn.find(tmpAmmoniaMol);
         for (int i = 0; i < tmpFunctionalGroups.size(); i++) {
             System.out.println("----------------------------------------------------------");
             System.out.println();
@@ -783,10 +780,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
             IAtomContainer tmpParsedMolecule = tmpSmilesParser.parseSmiles(tmpSmilesCode);
             tmpParsedMolecule = this.applyFiltersAndPreprocessing(tmpParsedMolecule);
             Aromaticity.cdkLegacy().apply(tmpParsedMolecule);
-            this.ertlFGFinderGenOn.find(tmpParsedMolecule);
-            this.ertlFGFinderGenOn.markAtoms(tmpParsedMolecule);
-            List<IAtomContainer> tmpFunctionalGroups = this.ertlFGFinderGenOn.extractGroups(tmpParsedMolecule);
-            tmpFunctionalGroups = this.ertlFGFinderGenOn.expandGeneralizedEnvironments(tmpFunctionalGroups);
+            List<IAtomContainer> tmpFunctionalGroups = this.ertlFGFinderGenOn.find(tmpParsedMolecule);
             for (IAtomContainer tmpFunctionalGroup : tmpFunctionalGroups) {
                 if (this.getPseudoSmilesCode(tmpFunctionalGroup).equals("O=C1N=C(C(=NR)C(=O)N1R)N(R)R")) {
                     tmpHashCodesList.add(this.molHashGenerator.generate(tmpFunctionalGroup));
@@ -1059,17 +1053,14 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
                 }
                 
                 anAromaticity.apply(tmpMolecule);
-                //Now the analysis of functional groups (will be altered for final release):
-                this.ertlFGFinderGenOff.find(tmpMolecule);
-                this.ertlFGFinderGenOff.markAtoms(tmpMolecule);
-                tmpFunctionalGroups = this.ertlFGFinderGenOff.extractGroups(tmpMolecule);
+                //Now the analysis of functional groups
+                //throws UnsupportedOperationException!
+                //tmpFunctionalGroups = this.ertlFGFinderGenOff.find(tmpMolecule);
+                tmpFunctionalGroups = new LinkedList<>(); //Workaround!
                 //Do the extraction again with activated generalization
                 tmpSettingsKeyForLogging += this.GENERALIZATION_SETTINGS_KEY_ADDITION;
                 //clone the original molecule before that or rather before first marking/extraction?
-                this.ertlFGFinderGenOn.find(tmpMolecule); 
-                this.ertlFGFinderGenOn.markAtoms(tmpMolecule);
-                tmpFunctionalGroupsGeneralized = this.ertlFGFinderGenOn.extractGroups(tmpMolecule);
-                tmpFunctionalGroupsGeneralized = this.ertlFGFinderGenOn.expandGeneralizedEnvironments(tmpFunctionalGroupsGeneralized);
+                tmpFunctionalGroupsGeneralized = this.ertlFGFinderGenOn.find(tmpMolecule);
             } catch (Exception anException) {
                 tmpSkippedMoleculesCounter++;
                 if (tmpOriginalMolecule != null) {
@@ -1079,7 +1070,8 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
                 }
                 continue;
             }
-            if (!(tmpFunctionalGroups == null || tmpFunctionalGroups.isEmpty())) {
+            //if (!(tmpFunctionalGroups == null || tmpFunctionalGroups.isEmpty())) {
+            if (!(tmpFunctionalGroupsGeneralized == null || tmpFunctionalGroupsGeneralized.isEmpty())) {
                 //If a molecule does not have FGs without generalization it does not have FGs with generalization either
                 this.enterFunctionalGroupsIntoMasterMap(tmpFunctionalGroups, 
                         aSettingsKey, 
@@ -1141,11 +1133,12 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
             aMolecule.setProperty(this.CAUSE_FOR_FILTERING_PROPERTY_KEY, this.ATOM_OR_BOND_COUNT_ZERO);
             return aMolecule;
         }
+        aMolecule.removeProperty(CDKConstants.CTAB_SGROUPS); //In case it was not done earlier
         AtomContainerManipulator.percieveAtomTypesAndConfigureAtoms(aMolecule);
         //##############################################################################################################
-        //Test for solving problems with explicit hydrogens in the input molecules
-        AtomContainerManipulator.suppressHydrogens(aMolecule);
-        CDKHydrogenAdder.getInstance(aMolecule.getBuilder()).addImplicitHydrogens(aMolecule);
+        //Workaround for solving problems with explicit hydrogens in the input molecules
+        //AtomContainerManipulator.suppressHydrogens(aMolecule);
+        //CDKHydrogenAdder.getInstance(aMolecule.getBuilder()).addImplicitHydrogens(aMolecule);
         //##############################################################################################################
         //Preprocessing: From structures containing two or more unconnected structures (e.g. ions) 
         //choose the largest structure for analysis
@@ -1532,21 +1525,22 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
     //</editor-fold>
 }
 
+//<editor-fold defaultstate="collapsed" desc="Enum CustomAtomEncoder">
 /**
- * Custom Enumeration of atom encoders for seeding atomic hash codes. 
- * 
+ * Custom Enumeration of atom encoders for seeding atomic hash codes.
+ *
  * @author Jonas Schaub
  * @see BasicAtomEncoder
  * @see AtomEncoder
  */
 enum CustomAtomEncoder implements AtomEncoder {
-
+    
     /**
-     * Encode if an atom is aromatic or not. This specification is necessary to distinguish functional groups with 
-     * aromatic environments and those without. For example: [H]O[C] and [H]OC* (pseudo SMILES codes) should be 
+     * Encode if an atom is aromatic or not. This specification is necessary to distinguish functional groups with
+     * aromatic environments and those without. For example: [H]O[C] and [H]OC* (pseudo SMILES codes) should be
      * assigned different hash codes by the MoleculeHashGenerator.
-     * 
-     * @see IAtom#isAromatic() 
+     *
+     * @see IAtom#isAromatic()
      */
     AROMATICITY {
         
@@ -1559,3 +1553,4 @@ enum CustomAtomEncoder implements AtomEncoder {
         }
     };
 }
+//</editor-fold>
