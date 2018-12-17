@@ -1,85 +1,51 @@
+/* Copyright (C) 1997-2018  The Chemistry Development Kit (CDK) project
+ *
+ * Contact: cdk-devel@lists.sourceforge.net
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public License
+ * as published by the Free Software Foundation; either version 2.1
+ * of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ */
 package org.openscience.cdk.tools;
 
 
-import static org.hamcrest.Matchers.is;
+import org.junit.Assert;
+import org.junit.Test;
+import org.openscience.cdk.AtomContainer;
+import org.openscience.cdk.CDKTestCase;
+import org.openscience.cdk.DefaultChemObjectBuilder;
+import org.openscience.cdk.PseudoAtom;
+import org.openscience.cdk.aromaticity.Aromaticity;
+import org.openscience.cdk.aromaticity.ElectronDonation;
+import org.openscience.cdk.exception.InvalidSmilesException;
+import org.openscience.cdk.graph.Cycles;
+import org.openscience.cdk.interfaces.*;
+import org.openscience.cdk.interfaces.IBond.Order;
+import org.openscience.cdk.isomorphism.Mappings;
+import org.openscience.cdk.isomorphism.Pattern;
+import org.openscience.cdk.isomorphism.VentoFoggia;
+import org.openscience.cdk.smiles.SmilesParser;
+import org.openscience.cdk.tools.manipulator.AtomContainerManipulator;
 
-import java.beans.ExceptionListener;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.StringWriter;
-import java.nio.channels.NetworkChannel;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
-import javax.lang.model.util.Elements;
-
-import org.apache.commons.math.stat.Frequency;
-import org.junit.Assert;
-import org.junit.Ignore;
-import org.junit.Test;
-import org.openscience.cdk.AtomContainer;
-import org.openscience.cdk.CDKConstants;
-import org.openscience.cdk.CDKTestCase;
-import org.openscience.cdk.ChemFile;
-import org.openscience.cdk.DefaultChemObjectBuilder;
-import org.openscience.cdk.Mapping;
-import org.openscience.cdk.PseudoAtom;
-import org.openscience.cdk.aromaticity.Aromaticity;
-import org.openscience.cdk.aromaticity.ElectronDonation;
-import org.openscience.cdk.atomtype.CDKAtomTypeMatcher;
-import org.openscience.cdk.exception.CDKException;
-import org.openscience.cdk.exception.InvalidSmilesException;
-import org.openscience.cdk.graph.ConnectivityChecker;
-import org.openscience.cdk.graph.Cycles;
-//import org.openscience.cdk.inchi.InChIGenerator;
-//import org.openscience.cdk.inchi.InChIGeneratorFactory;
-import org.openscience.cdk.interfaces.IAtom;
-import org.openscience.cdk.interfaces.IAtomContainer;
-import org.openscience.cdk.interfaces.IAtomContainerSet;
-import org.openscience.cdk.interfaces.IAtomType;
-import org.openscience.cdk.interfaces.IBond;
-import org.openscience.cdk.interfaces.IBond.Order;
-import org.openscience.cdk.interfaces.IChemFile;
-import org.openscience.cdk.interfaces.IChemObjectBuilder;
-import org.openscience.cdk.interfaces.IPseudoAtom;
-import org.openscience.cdk.io.MDLV2000Reader;
-import org.openscience.cdk.io.MDLV2000Writer;
-import org.openscience.cdk.io.iterator.IteratingSDFReader;
-import org.openscience.cdk.io.IChemObjectReader.Mode;
-import org.openscience.cdk.isomorphism.Mappings;
-import org.openscience.cdk.isomorphism.Pattern;
-import org.openscience.cdk.isomorphism.Ullmann;
-import org.openscience.cdk.isomorphism.UniversalIsomorphismTester;
-import org.openscience.cdk.isomorphism.VentoFoggia;
-import org.openscience.cdk.silent.Atom;
-import org.openscience.cdk.silent.Bond;
-import org.openscience.cdk.silent.SilentChemObjectBuilder;
-import org.openscience.cdk.smiles.SmiFlavor;
-import org.openscience.cdk.smiles.SmilesGenerator;
-import org.openscience.cdk.smiles.SmilesParser;
-//import org.openscience.cdk.smiles.SmilesParserTest;
-//import org.openscience.cdk.tools.ErtlFunctionalGroupsFinder.RAtom;
-import org.openscience.cdk.tools.diff.ElementDiff;
-import org.openscience.cdk.tools.manipulator.AtomContainerManipulator;
-import org.openscience.cdk.tools.manipulator.AtomTypeManipulator;
-
-import com.google.common.collect.HashMultiset;
-import com.google.common.collect.Multimaps;
-import com.google.common.collect.Multiset;
-import com.google.common.collect.Multisets;
-
-//import net.sf.jniinchi.INCHI_RET;
+import static org.hamcrest.Matchers.is;
 
 
 /**
- * @cdk.module test-standard
+ * @cdk.module test-extra
  * @author Sebastian Fritsch
  */
 public class ErtlFunctionalGroupsFinderTest extends CDKTestCase {
@@ -272,9 +238,16 @@ public class ErtlFunctionalGroupsFinderTest extends CDKTestCase {
 	
 	@Test
 	public void testFindExtraEpoxide() throws Exception {
-		String moleculeSmiles = "ClCC1CO1"; //Epichlorohydrin
+		String moleculeSmiles = "ClCC1CO1"; // Epichlorohydrin
     	String[] expectedFGs = new String[] {"[R]Cl", "[C]1[C]O1"};
     	testFind(moleculeSmiles, expectedFGs);
+	}
+
+	@Test
+	public void testFindExtraExplicitHs() throws Exception {
+		String moleculeSmiles = "[H]N([H])[H]";
+		String[] expectedFGs = new String[] {"[R]N([R])[R]"};
+		testFind(moleculeSmiles, expectedFGs);
 	}
 	
 	@Test
@@ -289,551 +262,61 @@ public class ErtlFunctionalGroupsFinderTest extends CDKTestCase {
 	}
 	
 	private void testFind(String moleculeSmiles, String[] fGStrings, Aromaticity aromaticity) throws Exception {
+    	// prepare input
 		SmilesParser smilesParser = new SmilesParser(DefaultChemObjectBuilder.getInstance());
         IAtomContainer mol = smilesParser.parseSmiles(moleculeSmiles);
         AtomContainerManipulator.percieveAtomTypesAndConfigureAtoms(mol);
 		aromaticity.apply(mol);
-		
-		this.printToConsoleWithIndices(mol);
-		
+
+		// find functional groups
 		ErtlFunctionalGroupsFinder fgFinder = new ErtlFunctionalGroupsFinder();
-        fgFinder.find(mol);
-        fgFinder.markAtoms(mol);
-        List<IAtomContainer> fGs = fgFinder.extractGroups(mol);
-        
-        Assert.assertThat("Number of (non-generalized) functional groups did not match", fGs.size(), is(fGStrings.length));
-        
-        System.out.println(fGs.size() + " FUNCTIONAL GROUPS:");
-        //this.printMolFiles(fGs);
-        
-        for(IAtomContainer fG : fGs) {
-			System.out.println(String.format("FG: %d atoms and %d bonds", fG.getAtomCount(), fG.getBondCount()));
-			this.assertNoNonseseBonds(fG);
-		}
-        
-        
-        fGs = fgFinder.expandGeneralizedEnvironments(fGs);
-        
-		for(IAtomContainer fG : fGs) {
-			System.out.println(String.format("FG: %d atoms and %d bonds", fG.getAtomCount(), fG.getBondCount()));
-			this.assertNoNonseseBonds(fG);
-		}
-        
-        System.out.println("GENERALIZED FUNCTIONAL GROUPS:");
-		this.printMolFiles(fGs);
-        
-		Assert.assertThat("Number of (generalized) functional groups did not match", fGs.size(), is(fGStrings.length));
-        
-        // EXPECTED functional groups:
+		List<IAtomContainer> fGs = fgFinder.find(mol);
+
+		//FIXME just to test if aromacity is relevant for isomorphism testing -> REMOVE!
+//		for(IAtomContainer fG : fGs){
+//			for(IAtom a : fG.atoms()) {
+//				a.setIsAromatic(false);
+//			}
+//		}
+
+		// get expected groups
         List<IAtomContainer>	expectedFGs = new LinkedList<>();
         for(String fGString : fGStrings) {
         	expectedFGs.add(buildFunctionalGroup(fGString));
         }
-        
+
+        // compare
         this.assertIsomorphism(expectedFGs, fGs);
 	}
-	
-	
-	@Ignore
-	// TODO: tidy up!
-	@Test 
-	public void testPerformance1() throws Exception {
-		List<String> moleculeSmilesList = new LinkedList<>();
-		List<String[]> expectedFGsList = new LinkedList<>();
-		
-		// example 1
-		moleculeSmilesList.add("Cc1cc(C)nc(NS(=O)(=O)c2ccc(N)cc2)n1");
-		//expectedFGsList.add(new String[] {"[R]N([R])S(=O)(=O)[R]", "[c]N(H)H", "[n]", "[n]"});
-		expectedFGsList.add(new String[] {"[R]N([R])S(=O)(=O)[R]", "[c]N(H)H", "NarR3", "NarR3"});
-		// example 2
-		moleculeSmilesList.add("NC(=N)c1ccc(\\\\\\\\C=C\\\\\\\\c2ccc(cc2O)C(=N)N)cc1");
-		expectedFGsList.add(new String[] {"[R]N=C-N([R])[R]", "[C]=[C]", "[c]OH", "[R]N=C-N([R])[R]"});
-		// example 3
-		moleculeSmilesList.add("CC(=O)Nc1nnc(s1)S(=O)(=O)N");
-		expectedFGsList.add(new String[] {"[R]N([R])C(=O)[R]", "[R]S(=O)(=O)N([R])[R]", "NarR3", "NarR3", "SarR2"});
-		// example 4
-		moleculeSmilesList.add("NS(=O)(=O)c1cc2c(NCNS2(=O)=O)cc1Cl");
-		expectedFGsList.add(new String[] {"[R]S(=O)(=O)N([R])[R]", "[R]S(=O)(=O)N([R])[C]N([R])[R]", "[R]Cl"});
-		// example 5
-		moleculeSmilesList.add("CNC1=Nc2ccc(Cl)cc2C(=N(=O)C1)c3ccccc3");
-		expectedFGsList.add(new String[] {"[R]N([R])[C]=N[R]", "[R]Cl", "[R]N(=O)=[C]"});
-		
-		
-		
-		// parse smiles
-		List<IAtomContainer> molecules = new LinkedList<>();
-		List<List<IAtomContainer>> expectedFGs = new LinkedList<>();
-		
-		SmilesParser smilesParser = new SmilesParser(DefaultChemObjectBuilder.getInstance());
-		Aromaticity aromaticity = new Aromaticity(ElectronDonation.daylight(), Cycles.all());
-		for(String smiles : moleculeSmilesList) {
-			IAtomContainer mol = smilesParser.parseSmiles(smiles);
-			AtomContainerManipulator.percieveAtomTypesAndConfigureAtoms(mol);
-			//Aromaticity.cdkLegacy().apply(mol);
-			aromaticity.apply(mol);
-			molecules.add(mol);
-		}
-		
-		for(String[] a : expectedFGsList) {
-			List<IAtomContainer> expFGs = new LinkedList<>();
-			for(String s : a) {
-				expFGs.add(buildFunctionalGroup(s));
-			}
-			expectedFGs.add(expFGs);
-		}
-		
-		// ensure that all examples run
-		ErtlFunctionalGroupsFinder fgFinder = new ErtlFunctionalGroupsFinder();
-		for(int i = 0; i < molecules.size(); i++) {
-			IAtomContainer mol = molecules.get(i);
-			fgFinder.find(mol);
-			fgFinder.markAtoms(mol);
-			List<IAtomContainer> fGs = fgFinder.extractGroups(mol);
-			fGs = fgFinder.expandGeneralizedEnvironments(fGs);
-			
-			//fgFinder.dispose();
-			
-			List<IAtomContainer> expFGs = expectedFGs.get(i);
-			Assert.assertThat("Number of functional groups did not match", fGs.size(), is(expFGs.size()));
-			assertIsomorphism(expFGs, fGs);
-		}
-		
-		// perf. test
-		int totalIterations = 80;
-		int singleIterations = 2000;
-		
-		long startTime, endTime;
-		for(int i = 0; i < totalIterations; i++) {
-			startTime = System.currentTimeMillis();
-			for(int j = 0; j < singleIterations; j++) {
-				// run all examples
-				for(IAtomContainer mol : molecules) {
-					mol = mol.clone();
-					
-					fgFinder = new ErtlFunctionalGroupsFinder();
-					
-					fgFinder.find(mol);
-					fgFinder.markAtoms(mol);
-					List<IAtomContainer> fGs = fgFinder.extractGroups(mol);
-					fGs = fgFinder.expandGeneralizedEnvironments(fGs);
-				}
-			}
-			endTime = System.currentTimeMillis();
-			System.out.println(molecules.size()*singleIterations + " Iterations (" + molecules.size() + " cases): " + (endTime-startTime) +" ms");
-		}	
-	}
-	
 
-	@Test
-	public void testChEBI_lite_3star() throws Exception {
-		List<IAtomContainer> molecules = new LinkedList<>();
-		String filename = "C:/Users/ETPCO/LocalDoc/ChEBI/ChEBI_lite.sdf";
-		InputStream in = new FileInputStream(filename);
-        MDLV2000Reader reader = new MDLV2000Reader(in, Mode.STRICT);
-        
-        int readerStopsCount = 0;
-        int basicFilteredCount = 0;
-        int oranometallicCount = 0; // counts structures with 1 or more metals/metaloids
-        int chargeCount = 0; // counts structures with 1 or more charged atoms
-        int unconnectedCount = 0; // counts the atom containers that are not connected
-        int invalidCount = 0;
 
-        IAtomContainer mol = new AtomContainer();
-        HashSet<String> nameSet = new HashSet<>();
-        HashMap<String, Integer> exceptionCountMap = new HashMap<>();
-        HashMap<String, Integer> metalsCountMap = new HashMap<>();
-        while(true){
-        	boolean isChargeCounted = false;
-        	boolean isMetalsCounted = false;
-        	boolean isUnconnected = false;
-        	boolean isInvalid = false;
-        	readerStopsCount++;
-        	try {
-        		mol = reader.read(new AtomContainer());
-        	}
-        	catch(Exception e) {
-        		exceptionCountMap.put(e.getMessage(), exceptionCountMap.get(e.getMessage()) == null ? 1 : exceptionCountMap.get(e.getMessage()) + 1);
-        		System.out.println("Reading error in enty " + readerStopsCount);
-        		continue;
-        	}
-        	if(mol == null) {
-        		break;
-        	}
-        	if(mol.getAtomCount() == 0 || mol.getBondCount() == 0) {
-        		Exception e= new Exception("Atom and/or Bond count is zero!");
-        		exceptionCountMap.put(e.getMessage(), exceptionCountMap.get(e.getMessage()) == null ? 1 : exceptionCountMap.get(e.getMessage()) + 1);
-        		System.out.println("Skipping enty " + readerStopsCount);
-        		continue;
-        	}
-        	basicFilteredCount++;
-        	String name = mol.getProperty("ChEBI Name");
-        	//nameSet.add(name);
-        	//use mol
-        	System.out.println(readerStopsCount + " ("+name+")");
-        	
-        	//remove s-groups ... they cause trouble in atomContainer.clone()(->SgroupManilupator.copy)
-        	mol.removeProperty(CDKConstants.CTAB_SGROUPS);
-        	
-        	
-        	AtomContainerManipulator.percieveAtomTypesAndConfigureAtoms(mol);
-        	HashSet<Integer> nonmetallicAtomicNumbers = new HashSet<>(Arrays.asList( //also non metalloid
-        			1, 2, 6, 7, 8, 9, 10, 15, 16, 17, 18, 34, 35, 36, 53, 54, 86));
-        	
-        	for(IAtom atom : mol.atoms()) {
-        		if(!nonmetallicAtomicNumbers.contains(atom.getAtomicNumber())) {
-        			if(!isMetalsCounted) {
-        				oranometallicCount++;
-        				metalsCountMap.put(atom.getSymbol(), metalsCountMap.get(atom.getSymbol()) == null ? 1 : metalsCountMap.get(atom.getSymbol()) + 1);
-        				isMetalsCounted = true;
-        			}
-        		}
-        		if(atom.getFormalCharge() != 0) {
-        			if(!isChargeCounted) {
-        				chargeCount++;
-        				isChargeCounted = true;
-        			}
-        		}
-        	}
-        	if(!ConnectivityChecker.isConnected(mol)) {
-        		unconnectedCount++;
-        		isUnconnected = true;
-        	}
-        	
-        	if(isChargeCounted || isUnconnected) {
-        		try {
-        			mol = fragmentAndNeutraliseCharges(mol);
-        		}
-        		catch (CDKException e) {
-        			invalidCount++;
-        			isInvalid = true;
-        		}
-        	}
-        	
-        	if(!isMetalsCounted && !isInvalid) {
-        		Aromaticity.cdkLegacy().apply(mol);
-        		molecules.add(mol);
-        	}
-        }
-        
-        
-        reader.close();
-        System.out.println("Found " + molecules.size() + " valid structures.");
-        System.out.println("Read " + basicFilteredCount + " structures."); //Name set size: " + nameSet.size());
-        System.out.println("with " + oranometallicCount + " organometallic structures & " + chargeCount + " structures with at least 1 charged atom & " + unconnectedCount + " unconnected structures");
-        System.out.println("Number of invalid structures: " + invalidCount);
-//        System.out.println("Metals and Metaloids log:");
-//        for(String symbol : metalsCountMap.keySet()) {
-//        	System.out.println(metalsCountMap.get(symbol) + "x: " + symbol);
-//        }
-//        System.out.println("Exception log:");
-//        for(String message : exceptionCountMap.keySet()) {
-//        	System.out.println(exceptionCountMap.get(message) + "x: " + message);
-//        }
-        System.out.println("######## start processing ... ##########");
-        List<IAtomContainer> allFGs = new LinkedList<>();
-        ErtlFunctionalGroupsFinder fgFinder = new ErtlFunctionalGroupsFinder();
-        int aCCounter = 0;
-        int noFGsFoundConter = 0;
-        long startTime = System.currentTimeMillis();
-        for(IAtomContainer aC : molecules) {
-            fgFinder.find(aC);
-            fgFinder.markAtoms(aC);
-            List<IAtomContainer> fGs = fgFinder.extractGroups(aC);
-            fGs = fgFinder.expandGeneralizedEnvironments(fGs);
-            if(fGs.isEmpty()) {
-            	noFGsFoundConter++;
-            }
-            else {
-            	allFGs.addAll(fGs);
-            }
-            
-            aCCounter++;
-        	if(aCCounter % 1000 == 0)
-        		System.out.println(aCCounter + "/ "+ molecules.size() +"\r");
-        }
-        long endTime = System.currentTimeMillis();
-        System.out.println("######## processing done (took " + (double)((endTime-startTime)/1000) + " s) ##########");
-        System.out.println("# of compounds where no FG could be found: " + noFGsFoundConter);
-        
-        //printMostCommonFunctionalGroupsPatternMatching(allFGs);
-        printMostCommonFunctionalGroups(allFGs);
-	}
-    
-    @Test
-    public void testFragmentAndNeutraliseCharges() throws Exception{
-    	String smiles = "CC[O-].C";
-    	
-    	SmilesParser smilesParser = new SmilesParser(DefaultChemObjectBuilder.getInstance());
-        IAtomContainer mol = smilesParser.parseSmiles(smiles);
-        AtomContainerManipulator.percieveAtomTypesAndConfigureAtoms(mol);
-		Aromaticity.cdkLegacy().apply(mol);
-		
-		mol = fragmentAndNeutraliseCharges(mol);
-		
-		SmilesGenerator sg = SmilesGenerator.unique();
-		Assert.assertEquals("OCC", sg.create(mol));
-    }
-    
-    private IAtomContainer fragmentAndNeutraliseCharges(IAtomContainer mol) throws CDKException {
-    	if(!ConnectivityChecker.isConnected(mol)) {
-    		IAtomContainerSet fragmentSet = ConnectivityChecker.partitionIntoMolecules(mol);
-    		IAtomContainer biggestFragment = null;
-    		for(IAtomContainer fragment : fragmentSet.atomContainers()) {
-    			 if(biggestFragment == null || biggestFragment.getAtomCount() < fragment.getAtomCount()) {
-    				 biggestFragment = fragment;
-    			 }
-    		}
-    		mol = biggestFragment;
-    	}
-    	
-    	CDKHydrogenAdder hydrogenAdder = CDKHydrogenAdder.getInstance(mol.getBuilder());
-    	CDKAtomTypeMatcher matcher = CDKAtomTypeMatcher.getInstance(mol.getBuilder());
-    	for(IAtom atom : mol.atoms()) {
-    		int formalCharge = atom.getFormalCharge();
-    		if(formalCharge != 0) {
-    			atom.setFormalCharge(0);
-    			IAtomType matched = matcher.findMatchingAtomType(mol, atom);
-    			if (matched != null) AtomTypeManipulator.configure(atom, matched);
-				hydrogenAdder.addImplicitHydrogens(mol, atom);
-    		}
-    	}
-    	
-    	return mol;
-    }
-    
-    private void printMostCommonFunctionalGroups(List<IAtomContainer> fGs) throws CDKException {
-    	Multiset<String> occurences = HashMultiset.create();		//counts occurences of patterns
-    	
-    	SmilesGenerator smilesGen = SmilesGenerator.unique();
-    	
-    	int smilesGenErrorCount = 0;
-    	int smilesParErrorCount = 0;
-    	int matchingErrorCount = 0;
-    	int nonUniqueSmilesCount = 0;
-    	
-    	// strip all aromaticity & impl hydrogen info and replace aromatic C's by Au
-    	for(IAtomContainer fG : fGs) {
-    		for(IAtom atom : fG.atoms()) {
-//    			if(atom.getAtomicNumber() == 6 && atom.isAromatic()) {
-//    				IAtom replacementAtom = new Atom("Au");
-//    				
-//    				CDKAtomTypeMatcher matcher = CDKAtomTypeMatcher.getInstance(fG.getBuilder()); //TODO: necessary?
-//    				IAtomType matched = matcher.findMatchingAtomType(fG, atom);
-//    	            if (matched != null) AtomTypeManipulator.configureUnsetProperties(atom, matched);
-//    	            
-//    				replacementAtom.setImplicitHydrogenCount(0);
-//    				AtomContainerManipulator.replaceAtomByAtom(fG, atom, replacementAtom);
-//    			}
-    			// replace aromatic C's by Ce, aromatic N's by Nd & aromatic S's by Sm
-    			if(atom.isAromatic()) {
-    				IAtom replacementAtom = null;
-    				if("C".equals(atom.getSymbol())) {
-    					replacementAtom = new Atom("Ce");
-    				}
-    				else if("N".equals(atom.getSymbol())) {
-    					replacementAtom = new Atom("Nd");
-    				}
-    				else if("S".equals(atom.getSymbol())) {
-    					replacementAtom = new Atom("Sm");
-    				}
-    				else if("O".equals(atom.getSymbol())) {
-    					replacementAtom = new Atom("Og");
-    				}
-    				if(replacementAtom != null) {
-    					Integer implHCount = atom.getImplicitHydrogenCount();
-    					AtomContainerManipulator.replaceAtomByAtom(fG, atom, replacementAtom);
-    					replacementAtom.setImplicitHydrogenCount(implHCount == null ? 0 : implHCount);
-    				}
-    				else {
-    					int herbert = 42;
-    				}
-    			}
-    			
-    			atom.setIsAromatic(false);
-    		}
-    		for(IBond bond : fG.bonds()) {
-    			bond.setIsAromatic(false);
-    		}
-    		
-    		//create smiles
-    		String smiles;
-    		try {
-    			smiles = smilesGen.create(fG);
-    		}
-    		catch(Exception e) {
-    			System.out.println("### ERROR generating smiles (skipping): " + e.getMessage());
-    			smilesGenErrorCount++;
-    			continue;
-    		}
-    		
-    		// add occurence
-    		occurences.add(smiles);
-    	}
-    	
-    	System.out.println("Found " + occurences.size() + " (semi) unique SMILES.");
-    	System.out.println("Proceeding to find doubles...");
-    	
-    	//check for double smiles
-    	Multiset<String> correctedOccurences = HashMultiset.create();
-    	HashMap<IAtomContainer, String> inCorrectedOccurences = new HashMap<>();
-    	
-    	SmilesParser smiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
-    	for(String smiles : occurences.elementSet()) {
-    		int occurenceCount = occurences.count(smiles);
-    		IAtomContainer fGFromSmiles;
-    		try {
-    			fGFromSmiles = smiPar.parseSmiles(smiles);
-    		}
-    		catch(Exception e) {
-    			System.out.println("### ERROR parsing smiles (skipping): " + e.getMessage());
-    			smilesParErrorCount++;
-    			continue;
-    		}
-    		
-    		Pattern patternFromSmiles = VentoFoggia.findIdentical(fGFromSmiles);
-    		
-    		boolean isInCorrectedOccurences = false;
-    		IAtomContainer matchingAtomContainer = null;
-    		for(IAtomContainer occuredFG : inCorrectedOccurences.keySet()) {
-    			try {
-    				if(patternFromSmiles.matches(occuredFG)) {
-    					isInCorrectedOccurences = true;
-    					matchingAtomContainer = occuredFG;
-    				}
-    			}
-    			catch(Exception e) {
-    				System.out.println("### ERROR matching (skipping): " + e.getMessage());
-    				matchingErrorCount++;
-    				continue;
-    			}
-    		}
-    		
-    		if(isInCorrectedOccurences) {
-    			// add occurences to already existing smiles
-    			String alreadyPresentSmiles = inCorrectedOccurences.get(matchingAtomContainer);
-				System.out.println("### INFO: found additional unique smiles for " + alreadyPresentSmiles + ": " + smiles);
-				nonUniqueSmilesCount++;
-				correctedOccurences.add(alreadyPresentSmiles, occurenceCount);
-				
-			}
-			else {
-				// new smiles & occurences to corrected occurences
-				correctedOccurences.add(smiles, occurenceCount);
-				inCorrectedOccurences.put(fGFromSmiles, smiles);
-			}
-    	}
-    	
-    	// print to console
-        	int frequencyThreshold = 20; // threshold for printout
-        	double percentageThreshold = 0.01; // threshold for percentage
-        	
-        	System.out.println("-----------------------------------------------------------------");
-        	System.out.println("Counted " + correctedOccurences.elementSet().size() + " unique FGs. Total # of FGs: " + correctedOccurences.size());
-        	System.out.println("Counted " + occurences.elementSet().size() + " semi unique SMILES. Total # of FGs: " + occurences.size());
-        	System.out.println("SMILES generation errors: " + smilesGenErrorCount);
-        	System.out.println("SMILES parsing errors: " + smilesParErrorCount);
-        	System.out.println("Matching errors: " + matchingErrorCount);
-
-        	String format = "%-20s%-20s%-20s%n";
-        	for(String smi : Multisets.copyHighestCountFirst(correctedOccurences).elementSet()) {
-        		
-        		String smiEdit = smi.replaceAll("\\*", "[R]").replaceAll("Ce", "c").replaceAll("Nd", "n").replaceAll("Sg", "s").replaceAll("Og", "o");
-       			int frequency = correctedOccurences.count(smi);
-       			double percentage = frequency/(double)fGs.size() * 100;
-       			
-       			if(frequency >= frequencyThreshold && percentage >= percentageThreshold) {
-       				System.out.printf(format, frequency + "x", String.format("%.2f", percentage) + "%", smiEdit);
-       			}	
-       		}
-    }
-    
-    private void printToConsoleWithIndices(IAtomContainer mol) {
-    	IAtomContainer c = new AtomContainer();
-    	try {
-			c = mol.clone();
-		} catch (CloneNotSupportedException e1) {
-			System.out.println("#ERROR# Could not clone molecule!");
-		}
-    	
-    	for(int i = 0; i < c.getAtomCount(); i++) {
-    		IAtom a = c.getAtom(i);
-    		a.setMassNumber(i);
-    	}
-		
-		SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.AtomicMass);
-		String smiles = new String();
-		try {
-			smiles = smiGen.create(c);
-		} catch (CDKException e) {
-			System.out.println("#ERROR# Could not generate SMILES!");
-		}
-		System.out.println("------------------------------------------------------");
-		System.out.println(smiles);
-		System.out.println("------------------------------------------------------");
-    }
-    
-    private void printMolFiles(List<IAtomContainer> fGs) throws IOException{
-		StringWriter stringWriter = new StringWriter();
-		MDLV2000Writer writer = new MDLV2000Writer(stringWriter);
-		for(IAtomContainer fG : fGs) {
-				try {
-					writer.writeMolecule(fG);
-				} catch (Exception e) {
-					System.out.println(e.getMessage());
-					Assert.assertFalse(true);
-				}
-		}
-		writer.close();
-		String molFile = stringWriter.toString();
-		System.out.println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
-		System.out.println(molFile);
-		System.out.println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
-    }
-    
-    private void assertNoNonseseBonds(IAtomContainer mol) {
-    	for(IBond b : mol.bonds()) {
-    		IAtom begin = b.getBegin();
-    		IAtom end = b.getEnd();
-    		Assert.assertNotNull(begin);
-    		Assert.assertNotNull(end);
-    		Assert.assertTrue(mol.contains(begin));
-    		Assert.assertTrue(mol.contains(end));
-    	}
-    }
-    
-    //FIXME: input needs same order!
-    //TODO: use VentoFoggia.findIdentical instead of UIT? -> much faster
     /**
-     * Uses asserts to check the following (actual vs. expected):
-     * 	-	Number of functional groups
-     * 	-	Atom counts for each group
-     * 	-	Bond counts for each group
-     * 	-	Isomorphism of each group pair (as interpreted by UniversalIsomorphismTester)
-     * 	-	Same aromaticities on carbons
-     * 	-	Same aromaticities for bonds
-     * 
+     * NOTE: actual and expected functional groups must be in the same order!
+	 *
      * @param expectedFGs 	list of expected functional groups
-     * @param fGs			list of actual functional groups
+	 * @param actualFGs			list of actual functional groups
      * @throws Exception	if anything does not work as planned
      */
-    private void assertIsomorphism(List<IAtomContainer> expectedFGs, List<IAtomContainer> fGs) throws Exception {
-    	Assert.assertThat("Number of functional groups does not match the expected number of groups", fGs.size(), is(expectedFGs.size()));
-    	UniversalIsomorphismTester uiTester = new UniversalIsomorphismTester();
-    	Pattern pattern;
-    	for(int i = 0; i < expectedFGs.size(); i++) {
+    private void assertIsomorphism(List<IAtomContainer> expectedFGs, List<IAtomContainer> actualFGs) {
+    	Assert.assertThat("Number of functional groups does not match the expected number of groups",
+				actualFGs.size(), is(expectedFGs.size()));
+
+		for(int i = 0; i < expectedFGs.size(); i++) {
     		IAtomContainer cExp = expectedFGs.get(i);
-    		IAtomContainer cAct = fGs.get(i);
+    		IAtomContainer cAct = actualFGs.get(i);
     		
-    		Assert.assertThat("Groups #" + i + ": different atom count", cAct.getAtomCount(), is(cExp.getAtomCount()));
-    		Assert.assertThat("Groups #" + i + ": different bond count", cAct.getBondCount(), is(cExp.getBondCount()));
-    		
-    		
-    		
-    		pattern = VentoFoggia.findIdentical(cExp);
-    		
-    		Assert.assertThat("Groups #" + i + ": not isomorph", pattern.matches(cAct), is(true));
+    		Assert.assertThat("Groups #" + i + ": different atom count",
+					cAct.getAtomCount(), is(cExp.getAtomCount()));
+    		Assert.assertThat("Groups #" + i + ": different bond count",
+					cAct.getBondCount(), is(cExp.getBondCount()));
+
+			Pattern pattern = VentoFoggia.findIdentical(cExp);
+
+			Assert.assertThat("Groups #" + i + ": not isomorph", pattern.matches(cAct), is(true));
     		
     		Mappings mappings = pattern.matchAll(cAct);
+
+    		//TODO replace extra aromacity checking by using custom QueryAtomContainer.create(...)
 
     		Map<IAtom, IAtom> atomMap = mappings.toAtomMap().iterator().next();
     		for (Map.Entry<IAtom,IAtom> e : atomMap.entrySet()) {
@@ -841,26 +324,13 @@ public class ErtlFunctionalGroupsFinderTest extends CDKTestCase {
     	         IAtom atomAct = e.getValue();
     	         Assert.assertThat("Groups #" + i + ": Atom aromaticity does not match" + atomAct.getSymbol() + atomAct.isAromatic() + atomExp.getSymbol() + atomExp.isAromatic(), atomAct.isAromatic(), is(atomExp.isAromatic()));
     	     }
-    		
+
     		Map<IBond, IBond> bondMap = mappings.toBondMap().iterator().next();
     		for (Map.Entry<IBond,IBond> e : bondMap.entrySet()) {
     	         IBond bondExp  = e.getKey();
     	         IBond bondAct = e.getValue();
     	         Assert.assertThat("Groups #" + i + ": Bond aromaticity does not match", bondAct.isAromatic(), is(bondExp.isAromatic()));
     	     }
-
-    		
-
-    		/*
-    		Assert.assertThat("Groups #" + i + ": not isomorph", uiTester.isIsomorph(cExp, cAct), is(true));
-    		
-    		for(int j = 0; j < cExp.getAtomCount(); j++) {
-    			Assert.assertThat("Groups #" + i + ": Aromaticity does not match", cAct.getAtom(j).isAromatic(), is(cExp.getAtom(j).isAromatic()));
-    		}
-    		for(int j = 0; j < cExp.getBondCount(); j++) {
-    			Assert.assertThat("Groups #" + i + ": Bond aromaticity does not match", cAct.getBond(j).isAromatic(), is(cExp.getBond(j).isAromatic()));
-    		}
-    		*/
     	}
     }
     
@@ -869,7 +339,8 @@ public class ErtlFunctionalGroupsFinderTest extends CDKTestCase {
         IBond 					b1, b2, b3, b4, b5, b6, b7, b8, b9;
         IChemObjectBuilder 		builder = DefaultChemObjectBuilder.getInstance();
         IAtomContainer 			container;
-        
+
+        // templates
         switch(string) {
         case "NarR3":
         	a1 = builder.newInstance(IPseudoAtom.class, "R");
@@ -936,7 +407,8 @@ public class ErtlFunctionalGroupsFinderTest extends CDKTestCase {
             container.setAtoms(new IAtom[] {a1, a2, a3, a4, a5, a6, a7});
             container.setBonds(new IBond[] {b1, b2, b3, b4, b5, b6});
             return container;
-            
+
+            // smiles
         default:
         	try {
         		SmilesParser smilesParser = new SmilesParser(DefaultChemObjectBuilder.getInstance());
@@ -958,7 +430,8 @@ public class ErtlFunctionalGroupsFinderTest extends CDKTestCase {
                 return container;
         	}
         	catch(InvalidSmilesException e) {
-        		throw new IllegalArgumentException("Input string '" + string + " could not be found as a template and is not a valid SMILES string.");
+        		throw new IllegalArgumentException("Input string '" + string + " could not be found as a template " +
+						"and is not a valid SMILES string.");
         	}
         }
     }
