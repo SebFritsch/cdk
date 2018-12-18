@@ -1,7 +1,29 @@
-/*
- * To do: Add license header
+/* Copyright (C) 1997-2018  The Chemistry Development Kit (CDK) project
+ *
+ * Contact: cdk-devel@lists.sourceforge.net
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public License
+ * as published by the Free Software Foundation; either version 2.1
+ * of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 package org.openscience.cdk.tools;
+
+/*
+To do:
+- Get rid of workaround for UnsupportedOperationException in calculateAbsoluteFGFrequencies() (with new sources!)
+- Implement HashMap for Pseudo SMILES generation
+- use hard-coded paths instead of resource solution
+*/
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -43,7 +65,6 @@ import org.openscience.cdk.interfaces.IAtomContainerSet;
 import org.openscience.cdk.interfaces.IAtomType;
 import org.openscience.cdk.interfaces.IBond;
 import org.openscience.cdk.interfaces.IPseudoAtom;
-import org.openscience.cdk.io.MDLV2000Writer;
 import org.openscience.cdk.io.iterator.IteratingSDFReader;
 import org.openscience.cdk.smiles.SmiFlavor;
 import org.openscience.cdk.smiles.SmilesGenerator;
@@ -54,13 +75,13 @@ import org.openscience.cdk.tools.manipulator.AtomTypeManipulator;
 
 
 /**
- * This class can be used to read an SD file containing chemical structures, to extract their functional groups using
- * the ErtlFunctionalGroupsFinder with different settings, and to write the functional groups with their associated 
- * frequency in this SD file to a CSV file.
+ * This test class can be used to read an SD file containing chemical structures, to extract their functional groups using
+ * the ErtlFunctionalGroupsFinder with different settings (i.e. aromaticity model and cycle finder algorithm), and write 
+ * the functional groups with their associated frequency in this SD file to a CSV file.
  * 
  * @author Jonas Schaub
  */
-public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase {
+public class ErtlFunctionalGroupsFinderEvaluationTest extends CDKTestCase {
     
     //<editor-fold defaultstate="collapsed" desc="Constants">
     
@@ -71,7 +92,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
     private final String SYSTEM_PROPERTY_FOR_OUTPUT_DIRECTORY = "user.home";
     
     /**
-     * Directory for output files
+     * Directory for output files; relative path from System.getProperty(SYSTEM_PROPERTY_FOR_OUTPUT_DIRECTORY)
      */
     private final String OUTPUT_DIRECTORY_FROM_SYSTEM_PROPERTY = File.separator + "Documents" + File.separator 
             + "Ertl_fg_finder_test";
@@ -84,7 +105,12 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
     /**
      * SD file of ChEBI database to be analyzed
      */
-    private final String CHEBI_SD_FILE_NAME = "ChEBI_lite.sdf";//ChEBI_lite_3star.sdf";
+    private final String CHEBI_SD_FILE_NAME = "ChEBI_lite.sdf";
+    
+    /**
+     * SD file of ChEBI 3 star database to be analyzed
+     */
+    private final String CHEBI_3STAR_SD_FILE_NAME = "ChEBI_lite_3star.sdf";
     
     /**
      * Identifier string for ChEBI test
@@ -92,9 +118,19 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
     private final String CHEBI_TEST_IDENTIFIER = "ChEBI";
     
     /**
+     * Identifier string for ChEBI 3 star test
+     */
+    private final String CHEBI_3STAR_TEST_IDENTIFIER = "ChEBI3Star";
+    
+    /**
      * Identifier string for ChEBI test without counting multiples per molecule
      */
     private final String CHEBI_NO_MULTIPLES_TEST_IDENTIFIER = "ChEBINoMultiples";
+    
+    /**
+     * Identifier string for ChEBI 3 star test without counting multiples per molecule
+     */
+    private final String CHEBI_3STAR_NO_MULTIPLES_TEST_IDENTIFIER = "ChEBI3StarNoMultiples";
     
     /**
      * SD file of ChEMBL database to be analyzed
@@ -105,6 +141,11 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
      * Identifier string for ChEMBL test
      */
     private final String CHEMBL_TEST_IDENTIFIER = "ChEMBL";
+    
+    /**
+     * Identifier string for ChEMBL test without counting multiples per molecule
+     */
+    private final String CHEMBL_NO_MULTIPLES_TEST_IDENTIFIER = "ChEMBLNoMultiples";
     
     /**
      * Identifier string for test of different CycleFinder settings
@@ -127,7 +168,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
     private final String EXCEPTIONS_LOG_FILE_HEADER = "Following molecules led to the specified exceptions:" 
             + System.getProperty("line.separator")
             + "(Note: If too many exceptions are thrown too fast the JVM stops filling in the complete stack trace. "
-            + "You need to be looking at an earlier stack trace to see the details." 
+            + "You need to be looking at an earlier stack trace to see the details.)" 
             + System.getProperty("line.separator");
     
     /**
@@ -438,7 +479,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
      * Note: it does not initialize any class variables because that would be unnecessary when it is called by a 
      * test method inherited from CDKTestCase; this is done by initialize()
      */
-    public ErtlFunctionalGroupsFinderAromaticityModelsTest() {
+    public ErtlFunctionalGroupsFinderEvaluationTest() {
         super();
     }
     //</editor-fold>
@@ -454,6 +495,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
      *
      * @throws java.lang.Exception if initialize() throws an exception or an unexpected exception occurs
      */
+    @Ignore
     @Test
     public void analyzeChebi() throws Exception {
         this.initialize(this.CHEBI_SD_FILE_NAME, this.CHEBI_TEST_IDENTIFIER, false);
@@ -555,6 +597,114 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
     }
     
     /**
+     * Test for analyzing ChEBI 3 star database for all five different aromaticity models supplied by the cdk: daylight, cdk,
+     * piBonds, cdkAllowingExocyclic and cdkLegacy
+     * <p>
+     * (Functional groups occurring multiple times in the same molecule are counted multiple times)
+     *
+     * @throws java.lang.Exception if initialize() throws an exception or an unexpected exception occurs
+     */
+    @Ignore
+    @Test
+    public void analyzeChebi3Star() throws Exception {
+        this.initialize(this.CHEBI_3STAR_SD_FILE_NAME, this.CHEBI_3STAR_TEST_IDENTIFIER, false);
+        Assume.assumeTrue(this.isTestAbleToRun);
+        
+        System.out.println("Loading file named: " + this.CHEBI_3STAR_SD_FILE_NAME);
+        ClassLoader tmpClassLoader = this.getClass().getClassLoader();
+        File tmpChebiSDFile = new File(tmpClassLoader.getResource(this.SDF_RESOURCES_PATH + this.CHEBI_3STAR_SD_FILE_NAME)
+                .getFile());
+        int tmpRequiredNumberOfReaders = 5;
+        IteratingSDFReader[] tmpReaders = new IteratingSDFReader[tmpRequiredNumberOfReaders];
+        try {
+            for (int i = 0; i < tmpRequiredNumberOfReaders; i++) {
+                IteratingSDFReader tmpChebiReader = new IteratingSDFReader(new FileInputStream(tmpChebiSDFile),
+                        DefaultChemObjectBuilder.getInstance(), true);
+                tmpReaders[i] = tmpChebiReader;
+            }
+        } catch (FileNotFoundException aFileNotFoundException) {
+            System.out.println("\nSD file could not be found. Test is ignored.");
+            Assume.assumeTrue(false);
+            return;
+        }
+        //If the 'all' CycleFinder produces an Intractable exception the 'vertexShort' CycleFinder is used
+        CycleFinder tmpCycleFinder = Cycles.or(Cycles.all(), Cycles.vertexShort());
+        
+        Aromaticity tmpDaylightModel = new Aromaticity(ElectronDonation.daylight(), tmpCycleFinder);
+        Aromaticity tmpCdkModel = new Aromaticity(ElectronDonation.cdk(), tmpCycleFinder);
+        Aromaticity tmpPiBondsModel = new Aromaticity(ElectronDonation.piBonds(), tmpCycleFinder);
+        Aromaticity tmpCdkAllowingExocyclicModel = new Aromaticity(ElectronDonation.cdkAllowingExocyclic(), tmpCycleFinder);
+        Aromaticity tmpCDKLegacyModel = Aromaticity.cdkLegacy();
+        
+        boolean tmpAreMultiplesCounted = true;
+        
+        this.calculateAbsoluteFGFrequencies(tmpReaders[0], this.DAYLIGHT_MODEL_SETTINGS_KEY, tmpDaylightModel, tmpAreMultiplesCounted);
+        this.calculateAbsoluteFGFrequencies(tmpReaders[1], this.CDK_MODEL_SETTINGS_KEY, tmpCdkModel, tmpAreMultiplesCounted);
+        this.calculateAbsoluteFGFrequencies(tmpReaders[2], this.PIBONDS_MODEL_SETTINGS_KEY, tmpPiBondsModel, tmpAreMultiplesCounted);
+        this.calculateAbsoluteFGFrequencies(tmpReaders[3], this.CDK_EXOCYCLIC_MODEL_SETTINGS_KEY, tmpCdkAllowingExocyclicModel, tmpAreMultiplesCounted);
+        this.calculateAbsoluteFGFrequencies(tmpReaders[4], this.CDK_LEGACY_MODEL_SETTINGS_KEY, tmpCDKLegacyModel, tmpAreMultiplesCounted);
+        
+        System.out.println("\nAll analyses are done!");
+        this.postProcessAndSaveData();
+        System.out.println("\nFinished!");
+        System.out.println("\nNumber of occured exceptions: " + this.exceptionsCounter);
+    }
+    
+    /**
+     * Test for analyzing ChEBI 3 star database for all five different aromaticity models supplied by the cdk: daylight, cdk,
+     * piBonds, cdkAllowingExocyclic and cdkLegacy;
+     * <p>
+     * Difference to analyzeChebi3Star(): If the same functional group occurs multiple times in the same molecule
+     * it is counted only once
+     *
+     * @throws java.lang.Exception if initialize() throws an exception or an unexpected exception occurs
+     */
+    @Test
+    public void analyzeChebi3StarNoMultiples() throws Exception {
+        this.initialize(this.CHEBI_3STAR_SD_FILE_NAME, this.CHEBI_3STAR_NO_MULTIPLES_TEST_IDENTIFIER, false);
+        Assume.assumeTrue(this.isTestAbleToRun);
+        
+        System.out.println("Loading file named: " + this.CHEBI_3STAR_SD_FILE_NAME);
+        ClassLoader tmpClassLoader = this.getClass().getClassLoader();
+        File tmpChebiSDFile = new File(tmpClassLoader.getResource(this.SDF_RESOURCES_PATH + this.CHEBI_3STAR_SD_FILE_NAME)
+                .getFile());
+        int tmpRequiredNumberOfReaders = 5;
+        IteratingSDFReader[] tmpReaders = new IteratingSDFReader[tmpRequiredNumberOfReaders];
+        try {
+            for (int i = 0; i < tmpRequiredNumberOfReaders; i++) {
+                IteratingSDFReader tmpChebiReader = new IteratingSDFReader(new FileInputStream(tmpChebiSDFile),
+                        DefaultChemObjectBuilder.getInstance(), true);
+                tmpReaders[i] = tmpChebiReader;
+            }
+        } catch (FileNotFoundException aFileNotFoundException) {
+            System.out.println("\nSD file could not be found. Test is ignored.");
+            Assume.assumeTrue(false);
+            return;
+        }
+        //If the 'all' CycleFinder produces an Intractable exception the 'vertexShort' CycleFinder is used
+        CycleFinder tmpCycleFinder = Cycles.or(Cycles.all(), Cycles.vertexShort());
+        
+        Aromaticity tmpDaylightModel = new Aromaticity(ElectronDonation.daylight(), tmpCycleFinder);
+        Aromaticity tmpCdkModel = new Aromaticity(ElectronDonation.cdk(), tmpCycleFinder);
+        Aromaticity tmpPiBondsModel = new Aromaticity(ElectronDonation.piBonds(), tmpCycleFinder);
+        Aromaticity tmpCdkAllowingExocyclicModel = new Aromaticity(ElectronDonation.cdkAllowingExocyclic(), tmpCycleFinder);
+        Aromaticity tmpCDKLegacyModel = Aromaticity.cdkLegacy();
+        
+        boolean tmpAreMultiplesCounted = false;
+        
+        this.calculateAbsoluteFGFrequencies(tmpReaders[0], this.DAYLIGHT_MODEL_SETTINGS_KEY, tmpDaylightModel, tmpAreMultiplesCounted);
+        this.calculateAbsoluteFGFrequencies(tmpReaders[1], this.CDK_MODEL_SETTINGS_KEY, tmpCdkModel, tmpAreMultiplesCounted);
+        this.calculateAbsoluteFGFrequencies(tmpReaders[2], this.PIBONDS_MODEL_SETTINGS_KEY, tmpPiBondsModel, tmpAreMultiplesCounted);
+        this.calculateAbsoluteFGFrequencies(tmpReaders[3], this.CDK_EXOCYCLIC_MODEL_SETTINGS_KEY, tmpCdkAllowingExocyclicModel, tmpAreMultiplesCounted);
+        this.calculateAbsoluteFGFrequencies(tmpReaders[4], this.CDK_LEGACY_MODEL_SETTINGS_KEY, tmpCDKLegacyModel, tmpAreMultiplesCounted);
+        
+        System.out.println("\nAll analyses are done!");
+        this.postProcessAndSaveData();
+        System.out.println("\nFinished!");
+        System.out.println("\nNumber of occured exceptions: " + this.exceptionsCounter);
+    }
+    
+    /**
      * Test for analyzing ChEMBL database for all five different aromaticity models supplied by the cdk: daylight, cdk,
      * piBonds, cdkAllowingExocyclic and cdkLegacy
      * <p>
@@ -566,6 +716,61 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
     @Test
     public void analyzeChembl() throws Exception {
         this.initialize(this.CHEMBL_SD_FILE_NAME, this.CHEMBL_TEST_IDENTIFIER, false);
+        Assume.assumeTrue(this.isTestAbleToRun);
+        
+        System.out.println("Loading file named: " + this.CHEMBL_SD_FILE_NAME);
+        ClassLoader tmpClassLoader = this.getClass().getClassLoader();
+        File tmpChebiSDFile = new File(tmpClassLoader.getResource(this.SDF_RESOURCES_PATH + this.CHEMBL_SD_FILE_NAME)
+                .getFile());
+        int tmpRequiredNumberOfReaders = 5;
+        IteratingSDFReader[] tmpReaders = new IteratingSDFReader[tmpRequiredNumberOfReaders];
+        try {
+            for (int i = 0; i < tmpRequiredNumberOfReaders; i++) {
+                IteratingSDFReader tmpChebiReader = new IteratingSDFReader(new FileInputStream(tmpChebiSDFile),
+                        DefaultChemObjectBuilder.getInstance(), true);
+                tmpReaders[i] = tmpChebiReader;
+            }
+        } catch (FileNotFoundException aFileNotFoundException) {
+            System.out.println("\nSD file could not be found. Test is ignored.");
+            Assume.assumeTrue(false);
+            return;
+        }
+        //If the 'all' CycleFinder produces an Intractable exception the 'vertexShort' CycleFinder is used
+        CycleFinder tmpCycleFinder = Cycles.or(Cycles.all(), Cycles.vertexShort());
+        
+        Aromaticity tmpDaylightModel = new Aromaticity(ElectronDonation.daylight(), tmpCycleFinder);
+        Aromaticity tmpCdkModel = new Aromaticity(ElectronDonation.cdk(), tmpCycleFinder);
+        Aromaticity tmpPiBondsModel = new Aromaticity(ElectronDonation.piBonds(), tmpCycleFinder);
+        Aromaticity tmpCdkAllowingExocyclicModel = new Aromaticity(ElectronDonation.cdkAllowingExocyclic(), tmpCycleFinder);
+        Aromaticity tmpCDKLegacyModel = Aromaticity.cdkLegacy();
+        
+        boolean tmpAreMultiplesCounted = true;
+        
+        this.calculateAbsoluteFGFrequencies(tmpReaders[0], this.DAYLIGHT_MODEL_SETTINGS_KEY, tmpDaylightModel, tmpAreMultiplesCounted);
+        this.calculateAbsoluteFGFrequencies(tmpReaders[1], this.CDK_MODEL_SETTINGS_KEY, tmpCdkModel, tmpAreMultiplesCounted);
+        this.calculateAbsoluteFGFrequencies(tmpReaders[2], this.PIBONDS_MODEL_SETTINGS_KEY, tmpPiBondsModel, tmpAreMultiplesCounted);
+        this.calculateAbsoluteFGFrequencies(tmpReaders[3], this.CDK_EXOCYCLIC_MODEL_SETTINGS_KEY, tmpCdkAllowingExocyclicModel, tmpAreMultiplesCounted);
+        this.calculateAbsoluteFGFrequencies(tmpReaders[4], this.CDK_LEGACY_MODEL_SETTINGS_KEY, tmpCDKLegacyModel, tmpAreMultiplesCounted);
+        
+        System.out.println("\nAll analyses are done!");
+        this.postProcessAndSaveData();
+        System.out.println("\nFinished!");
+        System.out.println("\nNumber of occured exceptions: " + this.exceptionsCounter);
+    }
+    
+    /**
+     * Test for analyzing ChEMBL database for all five different aromaticity models supplied by the cdk: daylight, cdk,
+     * piBonds, cdkAllowingExocyclic and cdkLegacy
+     * <p>
+     * Difference to analyzeChembl(): If the same functional group occurs multiple times in the same molecule
+     * it is counted only once
+     *
+     * @throws java.lang.Exception if initialize() throws an exception or an unexpected exception occurs
+     */
+    @Ignore
+    @Test
+    public void analyzeChemblNoMultiples() throws Exception {
+        this.initialize(this.CHEMBL_SD_FILE_NAME, this.CHEMBL_NO_MULTIPLES_TEST_IDENTIFIER, false);
         Assume.assumeTrue(this.isTestAbleToRun);
         
         System.out.println("Loading file named: " + this.CHEMBL_SD_FILE_NAME);
@@ -663,107 +868,12 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
     }
     //</editor-fold>
     
-    //<editor-fold defaultstate="collapsed" desc="Tests for debugging persisting problems">
-    //To do: Find the real reason for clone()'s abnormal behavior!
-    /**
-     * Test for finding the cause of incorrect valences in the pseudo SMILES code of generalized functional groups.
-     *
-     * @throws Exception for multiple causes
-     */
-    /*@Ignore
-    @Test
-    public void debuggingCloneTest() throws Exception {
-        this.initialize("", "DebuggingClone", true);
-        String tmpChebi65490Smiles = "Cc1c(O)c2C(=O)C[C@H](Oc2c2C(c3ccccc3)C3=C(Oc12)C(C)(C)C(=O)C(C)(C)C3=O)c1ccccc1";
-        SmilesParser tmpSmilesParser = new SmilesParser(DefaultChemObjectBuilder.getInstance());
-        IAtomContainer tmpMolecule = tmpSmilesParser.parseSmiles(tmpChebi65490Smiles);
-        MDLV2000Writer tmpMolFileWriter = new MDLV2000Writer(System.out);
-        tmpMolecule.removeProperty(CDKConstants.CTAB_SGROUPS);
-        tmpMolecule = this.applyFiltersAndPreprocessing(tmpMolecule);
-        CycleFinder tmpCycleFinder = Cycles.or(Cycles.all(), Cycles.vertexShort());
-        Aromaticity tmpCdkModel = new Aromaticity(ElectronDonation.cdk(), tmpCycleFinder);
-        tmpCdkModel.apply(tmpMolecule);
-        
-        this.ertlFGFinderGenOff.find(tmpMolecule);
-        this.ertlFGFinderGenOff.markAtoms(tmpMolecule);
-        
-        List<IAtomContainer> tmpFunctionalGroups = this.ertlFGFinderGenOff.extractGroups(tmpMolecule);
-        for (int i = 0; i < tmpFunctionalGroups.size(); i++) {
-            System.out.println();
-            System.out.println("----------------------------------------------------------");
-            System.out.println();
-            System.out.println("Functional group number " + (i+1));
-            System.out.println("Pseudo SMILES of functional group: " + this.getPseudoSmilesCode(tmpFunctionalGroups.get(i)));
-            System.out.println("Number of implicit Hydrogens: " + AtomContainerManipulator.getImplicitHydrogenCount(tmpFunctionalGroups.get(i)));
-            System.out.println("Size of bond array: " + AtomContainerManipulator.getBondArray(tmpFunctionalGroups.get(i)).length);
-            System.out.println("Molfile of functional group:");
-            tmpMolFileWriter.write(tmpFunctionalGroups.get(i));
-            System.out.println();
-            List<IAtomContainer> tmpFunctionalGroupsCloned = new LinkedList<>();
-            tmpFunctionalGroupsCloned.add(tmpFunctionalGroups.get(i).clone());
-            System.out.println("Pseudo SMILES of cloned functional group: " + this.getPseudoSmilesCode(tmpFunctionalGroupsCloned.get(0)));
-            System.out.println("Number of implicit Hydrogens: " + AtomContainerManipulator.getImplicitHydrogenCount(tmpFunctionalGroupsCloned.get(0)));
-            System.out.println("Size of bond array: " + AtomContainerManipulator.getBondArray(tmpFunctionalGroupsCloned.get(0)).length);
-            System.out.println("Molfile of cloned functional group:");
-            tmpMolFileWriter.write(tmpFunctionalGroupsCloned.get(0));
-            System.out.println();
-            List<IAtomContainer> tmpFunctionalGroupsGeneralized = new LinkedList<>();
-            tmpFunctionalGroupsGeneralized.add(tmpFunctionalGroups.get(i));
-            tmpFunctionalGroupsGeneralized = this.ertlFGFinderGenOff.expandGeneralizedEnvironments(tmpFunctionalGroupsGeneralized);
-            System.out.println("Pseudo SMILES of generalized functional group (without prior cloning): " + this.getPseudoSmilesCode(tmpFunctionalGroupsGeneralized.get(0)));
-            System.out.println("Number of implicit Hydrogens: " + AtomContainerManipulator.getImplicitHydrogenCount(tmpFunctionalGroupsGeneralized.get(0)));
-            System.out.println("Size of bond array: " + AtomContainerManipulator.getBondArray(tmpFunctionalGroupsGeneralized.get(0)).length);
-            System.out.println("Molfile of generalized functional group (without prior cloning):");
-            tmpMolFileWriter.write(tmpFunctionalGroupsGeneralized.get(0));
-            System.out.println();
-            List<IAtomContainer> tmpFunctionalGroupsClonedAndGeneralized = this.ertlFGFinderGenOff.expandGeneralizedEnvironments(tmpFunctionalGroupsCloned);
-            System.out.println("Pseudo SMILES of generalized functional group with prior cloning: " + this.getPseudoSmilesCode(tmpFunctionalGroupsClonedAndGeneralized.get(0)));
-            System.out.println("Number of implicit Hydrogens: " + AtomContainerManipulator.getImplicitHydrogenCount(tmpFunctionalGroupsClonedAndGeneralized.get(0)));
-            System.out.println("Size of bond array: " + AtomContainerManipulator.getBondArray(tmpFunctionalGroupsClonedAndGeneralized.get(0)).length);
-            System.out.println("Molfile of cloned and then generalized functional group:");
-            tmpMolFileWriter.write(tmpFunctionalGroupsClonedAndGeneralized.get(0));
-            System.out.println();
-            System.out.println();
-        }
-    }*/
-    
-    /**
-     * Test that shows a resulting functional groups with too many 'R' atoms for input molecules with explicit hydrogens.
-     *
-     * @throws java.lang.Exception
-     */
-    @Test public void debuggingTooManyRsTest() throws Exception {
-        this.initialize("", "TooManyValences", true);
-        SmilesParser tmpSmilesParser = new SmilesParser(DefaultChemObjectBuilder.getInstance());
-        MDLV2000Writer tmpMolFileWriter = new MDLV2000Writer(System.out);
-        String tmpAmmoniaSmiles = "N([H])([H])[H]";//CHEBI:16134
-        IAtomContainer tmpAmmoniaMol = tmpSmilesParser.parseSmiles(tmpAmmoniaSmiles);
-        tmpAmmoniaMol = this.applyFiltersAndPreprocessing(tmpAmmoniaMol);
-        Aromaticity.cdkLegacy().apply(tmpAmmoniaMol);
-        //System.out.println("Molfile of 'parent' molecule:");
-        //tmpMolFileWriter.write(tmpAmmoniaMol);
-        List<IAtomContainer> tmpFunctionalGroups = this.ertlFGFinderGenOn.find(tmpAmmoniaMol);
-        for (int i = 0; i < tmpFunctionalGroups.size(); i++) {
-            System.out.println("----------------------------------------------------------");
-            System.out.println();
-            System.out.println("Functional group number " + (i+1));
-            System.out.println("Pseudo SMILES of functional group: " + this.getPseudoSmilesCode(tmpFunctionalGroups.get(i)));
-            System.out.println("Molfile of functional group:");
-            tmpMolFileWriter.write(tmpFunctionalGroups.get(i));
-            System.out.println("Hash code of functional group: " + this.molHashGenerator.generate(tmpFunctionalGroups.get(i)));
-            System.out.println();
-        }
-        Assert.assertEquals("RN(R)R", this.getPseudoSmilesCode(tmpFunctionalGroups.get(0)));
-    }
-    //</editor-fold>
-    
     //<editor-fold defaultstate="collapsed" desc="Other tests">
     /**
      * Test for correct MoleculeHashGenerator settings/performance on some examples.
      *
-     * @throws java.lang.Exception
+     * @throws java.lang.Exception if initialize() throws an exception or a SMILES code can not be parsed into a molecule
      */
-    @Ignore
     @Test
     public void testMoleculeHashGeneratorSettings() throws Exception {
         this.initialize("", "HashGeneratorTest", true);
@@ -784,11 +894,6 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
             for (IAtomContainer tmpFunctionalGroup : tmpFunctionalGroups) {
                 if (this.getPseudoSmilesCode(tmpFunctionalGroup).equals("O=C1N=C(C(=NR)C(=O)N1R)N(R)R")) {
                     tmpHashCodesList.add(this.molHashGenerator.generate(tmpFunctionalGroup));
-                    /*System.out.println();
-                    for (IAtom tmpAtom : tmpFunctionalGroup.atoms()) {
-                    System.out.println(tmpAtom.getSymbol() + " : " + tmpAtom.getHybridization());
-                    }
-                    System.out.println();*/
                 }
             }
         }
@@ -836,6 +941,72 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
             IAtomContainer tmpValueMol = tmpSmilesParser.parseSmiles(tmpEquivalentSmilesMap.get(tmpKeySmiles));
             Assert.assertEquals(this.molHashGenerator.generate(tmpKeyMol), this.molHashGenerator.generate(tmpValueMol));
         }
+    }
+    
+    /**
+     * Test for correct preprocessing (neutralization of charges and selection of biggest fragment).
+     * 
+     * @throws Exception if initialize() throws an exception or a SMILES code can not be parsed into a molecule
+     */
+    @Test
+    public void testPreprocessing() throws Exception {
+        this.initialize("", "PreprocessingTest", true);
+        String tmpSmiles = "CC[O-].C";
+    	SmilesParser tmpSmilesParser = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        IAtomContainer tmpMol = tmpSmilesParser.parseSmiles(tmpSmiles);
+        tmpMol = this.applyFiltersAndPreprocessing(tmpMol);
+	SmilesGenerator sg = SmilesGenerator.unique();
+	Assert.assertEquals("OCC", sg.create(tmpMol));
+    }
+    
+    /**
+     * Testing the ErtlFunctionalGroupsFinder.find() methods performance on ChEBI.
+     * 
+     * @throws java.lang.Exception if initialize() throws an exception or the IteratingSDFReader can not be closed
+     */
+    @Test
+    public void testPerformance() throws Exception {
+        this.initialize(this.CHEBI_SD_FILE_NAME, "PerformanceTest", false);
+        Assume.assumeTrue(this.isTestAbleToRun);
+        
+        System.out.println("Loading file named: " + this.CHEBI_SD_FILE_NAME);
+        ClassLoader tmpClassLoader = this.getClass().getClassLoader();
+        File tmpChebiSDFile = new File(tmpClassLoader.getResource(this.SDF_RESOURCES_PATH + this.CHEBI_SD_FILE_NAME)
+                .getFile());
+        IteratingSDFReader tmpReader = null;
+        try {
+            tmpReader = new IteratingSDFReader(new FileInputStream(tmpChebiSDFile),
+                    DefaultChemObjectBuilder.getInstance(), true);
+        } catch (FileNotFoundException aFileNotFoundException) {
+            System.out.println("\nSD file could not be found. Test is ignored.");
+            Assume.assumeTrue(false);
+            return;
+        }
+        List<IAtomContainer> tmpMoleculesList = new LinkedList<>();
+        Aromaticity tmpCdkLegacyModel = Aromaticity.cdkLegacy();
+        while (tmpReader.hasNext()) {
+            try {
+                IAtomContainer tmpMolecule = (IAtomContainer) tmpReader.next();
+                tmpMolecule = this.applyFiltersAndPreprocessing(tmpMolecule);
+                if (tmpMolecule.getProperty(this.MOLECULE_MUST_BE_FILTERED_PROPERTY_KEY)) {
+                    continue;
+                }
+                tmpCdkLegacyModel.apply(tmpMolecule);
+                tmpMoleculesList.add(tmpMolecule);
+            } catch (Exception anException) {
+                /*No logging required here, it is a simple performance test*/
+            }
+        }
+        tmpReader.close();
+        IAtomContainer[] tmpMoleculesArray = new IAtomContainer[tmpMoleculesList.size()];
+        tmpMoleculesArray = tmpMoleculesList.toArray(tmpMoleculesArray);
+        System.out.println("\nDone Loading database. Found and processed " + tmpMoleculesArray.length + " valid molecules.");
+        long tmpStartTime = System.currentTimeMillis();
+        for (IAtomContainer tmpMolecule : tmpMoleculesArray) {
+            this.ertlFGFinderGenOn.find(tmpMolecule, false);
+        }
+        long tmpEndTime = System.currentTimeMillis();
+        System.out.println("\nExtraction of functional groups from these molecules took " + (tmpEndTime - tmpStartTime) + " ms.\n");
     }
     //</editor-fold>
     
@@ -1022,7 +1193,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
                 /*Note: A molecule can be supposed to be filtered for more than one of the named reasons but only the first 
                   tested reason will be named as cause*/
                 String tmpCauseForFiltering = "";
-                //Remove s-groups ... they cause trouble in atomContainer.clone()(->SgroupManilupator.copy)
+                //Remove s-groups before cloning, they cause trouble in atomContainer.clone(); see cdk api CDKConstants.CTAB_SGROUPS
                 tmpMolecule.removeProperty(CDKConstants.CTAB_SGROUPS);
                 //Produce a clone of the original molecule for logging
                 tmpOriginalMolecule = tmpMolecule.clone();
@@ -1054,13 +1225,16 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
                 
                 anAromaticity.apply(tmpMolecule);
                 //Now the analysis of functional groups
+                //In the first invokation of find() the atom container is cloned because it will be reused for the second invokation of find()
+                //######################################################################################################
                 //throws UnsupportedOperationException!
-                //tmpFunctionalGroups = this.ertlFGFinderGenOff.find(tmpMolecule);
+                //tmpFunctionalGroups = this.ertlFGFinderGenOff.find(tmpMolecule, true);
                 tmpFunctionalGroups = new LinkedList<>(); //Workaround!
+                //######################################################################################################
                 //Do the extraction again with activated generalization
                 tmpSettingsKeyForLogging += this.GENERALIZATION_SETTINGS_KEY_ADDITION;
-                //clone the original molecule before that or rather before first marking/extraction?
-                tmpFunctionalGroupsGeneralized = this.ertlFGFinderGenOn.find(tmpMolecule);
+                //In this invokation of find() the atom container is not cloned
+                tmpFunctionalGroupsGeneralized = this.ertlFGFinderGenOn.find(tmpMolecule, false);
             } catch (Exception anException) {
                 tmpSkippedMoleculesCounter++;
                 if (tmpOriginalMolecule != null) {
@@ -1070,7 +1244,9 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
                 }
                 continue;
             }
+            //##########################################################################################################           
             //if (!(tmpFunctionalGroups == null || tmpFunctionalGroups.isEmpty())) {
+            //##########################################################################################################
             if (!(tmpFunctionalGroupsGeneralized == null || tmpFunctionalGroupsGeneralized.isEmpty())) {
                 //If a molecule does not have FGs without generalization it does not have FGs with generalization either
                 this.enterFunctionalGroupsIntoMasterMap(tmpFunctionalGroups, 
@@ -1133,13 +1309,10 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
             aMolecule.setProperty(this.CAUSE_FOR_FILTERING_PROPERTY_KEY, this.ATOM_OR_BOND_COUNT_ZERO);
             return aMolecule;
         }
-        aMolecule.removeProperty(CDKConstants.CTAB_SGROUPS); //In case it was not done earlier
+        /*Remove s-groups before cloning (will be done by the ErtlFunctionalGroupsFinder.find() method), 
+        they cause trouble in atomContainer.clone(); see cdk api CDKConstants.CTAB_SGROUPS.*/
+        aMolecule.removeProperty(CDKConstants.CTAB_SGROUPS);
         AtomContainerManipulator.percieveAtomTypesAndConfigureAtoms(aMolecule);
-        //##############################################################################################################
-        //Workaround for solving problems with explicit hydrogens in the input molecules
-        //AtomContainerManipulator.suppressHydrogens(aMolecule);
-        //CDKHydrogenAdder.getInstance(aMolecule.getBuilder()).addImplicitHydrogens(aMolecule);
-        //##############################################################################################################
         //Preprocessing: From structures containing two or more unconnected structures (e.g. ions) 
         //choose the largest structure for analysis
         //This step must be done prior to the next step!
@@ -1506,7 +1679,6 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
         } catch (CDKException | NullPointerException aNewException){
             this.exceptionsPrintWriter.println("SMILES code: " + this.SMILES_CODE_PLACEHOLDER);
         }
-        //aMolecule.getProperty(CDKConstants.TITLE);?
         String tmpChebiName = aMolecule.getProperty("ChEBI Name");
         if (tmpChebiName != null)
             this.exceptionsPrintWriter.println("ChEBI name: " + tmpChebiName);
@@ -1533,7 +1705,7 @@ public class ErtlFunctionalGroupsFinderAromaticityModelsTest extends CDKTestCase
  * @see BasicAtomEncoder
  * @see AtomEncoder
  */
-enum CustomAtomEncoderEnum implements AtomEncoder {
+enum CustomAtomEncoder implements AtomEncoder {
     
     /**
      * Encode if an atom is aromatic or not. This specification is necessary to distinguish functional groups with
