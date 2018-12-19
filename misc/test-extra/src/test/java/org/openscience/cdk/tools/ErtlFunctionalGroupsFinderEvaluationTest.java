@@ -21,8 +21,6 @@ package org.openscience.cdk.tools;
 /*
 To do:
 - Get rid of workaround for UnsupportedOperationException in calculateAbsoluteFGFrequencies() (with new sources!)
-- Implement HashMap for Pseudo SMILES generation
-- use hard-coded paths instead of resource solution
 */
 
 import java.io.File;
@@ -77,7 +75,10 @@ import org.openscience.cdk.tools.manipulator.AtomTypeManipulator;
 /**
  * This test class can be used to read an SD file containing chemical structures, to extract their functional groups using
  * the ErtlFunctionalGroupsFinder with different settings (i.e. aromaticity model and cycle finder algorithm), and write 
- * the functional groups with their associated frequency in this SD file to a CSV file.
+ * the functional groups with their associated frequency under the given settings in this SD file to a CSV file.
+ * <p>
+ * To run correctly the constants CHEBI_SD_FILE_PATH, CHEBI_3STAR_SD_FILE_PATH and CHEMBL_SD_FILE_PATH must be set to where 
+ * to find the specific files on the local system.
  * 
  * @author Jonas Schaub
  */
@@ -87,30 +88,24 @@ public class ErtlFunctionalGroupsFinderEvaluationTest extends CDKTestCase {
     
     //<editor-fold defaultstate="collapsed" desc="Strings">
     /**
-     * Called via System.getProperty() to determine a root folder for output directory
+     * Path to SD file of ChEBI database to be analyzed
      */
-    private final String SYSTEM_PROPERTY_FOR_OUTPUT_DIRECTORY = "user.home";
+    private final String CHEBI_SD_FILE_PATH = "C:\\Users\\Bachelor\\Jonas\\ChEBI_lite.sdf";
     
     /**
-     * Directory for output files; relative path from System.getProperty(SYSTEM_PROPERTY_FOR_OUTPUT_DIRECTORY)
+     * Path to SD file of ChEBI 3 star database to be analyzed
      */
-    private final String OUTPUT_DIRECTORY_FROM_SYSTEM_PROPERTY = File.separator + "Documents" + File.separator 
-            + "Ertl_fg_finder_test";
+    private final String CHEBI_3STAR_SD_FILE_PATH = "C:\\Users\\Bachelor\\Jonas\\ChEBI_lite_3star.sdf";
     
     /**
-     * Resources directory of SD files to be read
+     * Path to SD file of ChEMBL database to be analyzed
      */
-    private final String SDF_RESOURCES_PATH = "resources/sdf/";
+    private final String CHEMBL_SD_FILE_PATH = "C:\\Users\\Bachelor\\Jonas\\chembl_24.sdf";
     
     /**
-     * SD file of ChEBI database to be analyzed
+     * Directory for output files; Will be created as sub-folder in the working directory
      */
-    private final String CHEBI_SD_FILE_NAME = "ChEBI_lite.sdf";
-    
-    /**
-     * SD file of ChEBI 3 star database to be analyzed
-     */
-    private final String CHEBI_3STAR_SD_FILE_NAME = "ChEBI_lite_3star.sdf";
+    private final String OUTPUT_FOLDER_FROM_WORKING_DIRECTORY = "Ertl_fg_finder_test";
     
     /**
      * Identifier string for ChEBI test
@@ -131,11 +126,6 @@ public class ErtlFunctionalGroupsFinderEvaluationTest extends CDKTestCase {
      * Identifier string for ChEBI 3 star test without counting multiples per molecule
      */
     private final String CHEBI_3STAR_NO_MULTIPLES_TEST_IDENTIFIER = "ChEBI3StarNoMultiples";
-    
-    /**
-     * SD file of ChEMBL database to be analyzed
-     */
-    private final String CHEMBL_SD_FILE_NAME = "chembl_24.sdf";
     
     /**
      * Identifier string for ChEMBL test
@@ -197,8 +187,8 @@ public class ErtlFunctionalGroupsFinderEvaluationTest extends CDKTestCase {
     private final String FILE_NAME_ADDITION_SEPERATOR = "_";
     
     /**
-     * Key for the master HashMap's inner maps under which to store the ChEBI or ChEMBL id of an exemplary molecule 
-     * that contains this functional group
+     * Key for the master HashMap's inner maps under which to store the ChEBI or ChEMBL id or CDK title of an exemplary 
+     * molecule that contains this functional group
      */
     private final String MOLECULE_OF_ORIGIN_KEY = "origin";
     
@@ -328,7 +318,7 @@ public class ErtlFunctionalGroupsFinderEvaluationTest extends CDKTestCase {
     private final String SMILES_CODE_PLACEHOLDER = "SMILES code could not be created";
     
     /**
-     * Placeholder String for 'parent' molecules' ids, assigned in case they could not be read
+     * Placeholder String for 'parent' molecules' IDs, assigned in case they could not be read
      */
     private final String MOLECULE_OF_ORIGIN_ID_PLACEHOLDER = "no id for molecule of origin";
     //</editor-fold>
@@ -396,8 +386,7 @@ public class ErtlFunctionalGroupsFinderEvaluationTest extends CDKTestCase {
     
     //<editor-fold defaultstate="collapsed" desc="Variables">
     /**
-     * Directory for all produced files; Will be created by adding SYSTEM_PROPERTY_FOR_OUTPUT_DIRECTORY, 
-     * OUTPUT_DIRECTORY_FROM_SYSTEM_PROPERTY and the individual test identifier
+     * Directory for all produced files; It will be the directory where th SD file that is analyzed was loaded from
      */
     private String outputDirectory;
     
@@ -417,6 +406,12 @@ public class ErtlFunctionalGroupsFinderEvaluationTest extends CDKTestCase {
      * True if all operations in initialize() were successful and the test is able to run
      */
     private boolean isTestAbleToRun;
+    
+    /**
+     * True if the currently running test requires files to be loaded and files to log exceptions or filtered molecules 
+     * or the produced results and therefore the PrintWriter objects have been initialized
+     */
+    private boolean areFileOperationsActivated;
     
     /**
      * PrintWriter for logging exceptions
@@ -455,10 +450,22 @@ public class ErtlFunctionalGroupsFinderEvaluationTest extends CDKTestCase {
     
     /**
      * Master HashMap for storing results; Its keys are the hash codes produced by the MoleculeHashGenerator for the 
-     * functional groups and its values are inner HashMaps that hold the IAtomContainer of a functional group and its 
-     * frequencies for different settings as String-Object pairs
+     * functional groups and its values are inner HashMaps that hold the (pseudo) SMILES representation of a functional 
+     * group and its frequencies for different settings as String-Object pairs, plus an exemplary molecule of origin
      */
     private HashMap<Long, HashMap> masterHashMap;
+    
+    /**
+     * A map that gives a certain element symbol for a placeholder atom marking a specific aromatic atom in pseudo SMILES
+     * creation
+     */
+    private HashMap<String, String> pseudoSmilesAromaticElementToPlaceholderElementMap;
+    
+    /**
+     * A map that gives the pseudo SMILES representation for a specific placeholder element from 
+     * pseudoSmilesAromaticElementToPlaceholderElementMap
+     */
+    private HashMap<String, String> pseudoSmilesPlaceholderElementToPseudoSmilesSymbolMap;
     
     /**
      * A list for storing all used settings keys in a test
@@ -476,11 +483,16 @@ public class ErtlFunctionalGroupsFinderEvaluationTest extends CDKTestCase {
     /**
      * Constructor
      * <p>
-     * Note: it does not initialize any class variables because that would be unnecessary when it is called by a 
+     * Note: it does not initialize any class variables (except 5) because that would be unnecessary when it is called by a 
      * test method inherited from CDKTestCase; this is done by initialize()
      */
     public ErtlFunctionalGroupsFinderEvaluationTest() {
         super();
+        this.areFileOperationsActivated = false;
+        this.outputDirectory = null;
+        this.exceptionsPrintWriter = null;
+        this.filteredMoleculesPrintWriter = null;
+        this.dataOutputPrintWriter = null;
     }
     //</editor-fold>
     
@@ -493,18 +505,16 @@ public class ErtlFunctionalGroupsFinderEvaluationTest extends CDKTestCase {
      * <p>
      * (Functional groups occurring multiple times in the same molecule are counted multiple times)
      *
-     * @throws java.lang.Exception if initialize() throws an exception or an unexpected exception occurs
+     * @throws java.lang.Exception if initializeWithFileOperations() throws an exception or an unexpected exception occurs
      */
     @Ignore
     @Test
     public void analyzeChebi() throws Exception {
-        this.initialize(this.CHEBI_SD_FILE_NAME, this.CHEBI_TEST_IDENTIFIER, false);
+        this.initializeWithFileOperations(this.CHEBI_SD_FILE_PATH, this.CHEBI_TEST_IDENTIFIER);
         Assume.assumeTrue(this.isTestAbleToRun);
         
-        System.out.println("Loading file named: " + this.CHEBI_SD_FILE_NAME);
-        ClassLoader tmpClassLoader = this.getClass().getClassLoader();
-        File tmpChebiSDFile = new File(tmpClassLoader.getResource(this.SDF_RESOURCES_PATH + this.CHEBI_SD_FILE_NAME)
-                .getFile());
+        System.out.println("\nLoading file with path: " + this.CHEBI_SD_FILE_PATH);
+        File tmpChebiSDFile = new File(this.CHEBI_SD_FILE_PATH);
         int tmpRequiredNumberOfReaders = 5;
         IteratingSDFReader[] tmpReaders = new IteratingSDFReader[tmpRequiredNumberOfReaders];
         try {
@@ -536,7 +546,10 @@ public class ErtlFunctionalGroupsFinderEvaluationTest extends CDKTestCase {
         this.calculateAbsoluteFGFrequencies(tmpReaders[4], this.CDK_LEGACY_MODEL_SETTINGS_KEY, tmpCDKLegacyModel, tmpAreMultiplesCounted);
         
         System.out.println("\nAll analyses are done!");
-        this.postProcessAndSaveData();
+        for (IteratingSDFReader tmpReader : tmpReaders) {
+            tmpReader.close();
+        }
+        this.saveData();
         System.out.println("\nFinished!");
         System.out.println("\nNumber of occured exceptions: " + this.exceptionsCounter);
     }
@@ -548,18 +561,16 @@ public class ErtlFunctionalGroupsFinderEvaluationTest extends CDKTestCase {
      * Difference to analyzeChebi(): If the same functional group occurs multiple times in the same molecule
      * it is counted only once
      *
-     * @throws java.lang.Exception if initialize() throws an exception or an unexpected exception occurs
+     * @throws java.lang.Exception if initializeWithFileOperations() throws an exception or an unexpected exception occurs
      */
     @Ignore
     @Test
     public void analyzeChebiNoMultiples() throws Exception {
-        this.initialize(this.CHEBI_SD_FILE_NAME, this.CHEBI_NO_MULTIPLES_TEST_IDENTIFIER, false);
+        this.initializeWithFileOperations(this.CHEBI_SD_FILE_PATH, this.CHEBI_NO_MULTIPLES_TEST_IDENTIFIER);
         Assume.assumeTrue(this.isTestAbleToRun);
         
-        System.out.println("Loading file named: " + this.CHEBI_SD_FILE_NAME);
-        ClassLoader tmpClassLoader = this.getClass().getClassLoader();
-        File tmpChebiSDFile = new File(tmpClassLoader.getResource(this.SDF_RESOURCES_PATH + this.CHEBI_SD_FILE_NAME)
-                .getFile());
+        System.out.println("\nLoading file with path: " + this.CHEBI_SD_FILE_PATH);
+        File tmpChebiSDFile = new File(this.CHEBI_SD_FILE_PATH);
         int tmpRequiredNumberOfReaders = 5;
         IteratingSDFReader[] tmpReaders = new IteratingSDFReader[tmpRequiredNumberOfReaders];
         try {
@@ -591,7 +602,10 @@ public class ErtlFunctionalGroupsFinderEvaluationTest extends CDKTestCase {
         this.calculateAbsoluteFGFrequencies(tmpReaders[4], this.CDK_LEGACY_MODEL_SETTINGS_KEY, tmpCDKLegacyModel, tmpAreMultiplesCounted);
         
         System.out.println("\nAll analyses are done!");
-        this.postProcessAndSaveData();
+        for (IteratingSDFReader tmpReader : tmpReaders) {
+            tmpReader.close();
+        }
+        this.saveData();
         System.out.println("\nFinished!");
         System.out.println("\nNumber of occured exceptions: " + this.exceptionsCounter);
     }
@@ -602,18 +616,16 @@ public class ErtlFunctionalGroupsFinderEvaluationTest extends CDKTestCase {
      * <p>
      * (Functional groups occurring multiple times in the same molecule are counted multiple times)
      *
-     * @throws java.lang.Exception if initialize() throws an exception or an unexpected exception occurs
+     * @throws java.lang.Exception if initializeWithFileOperations() throws an exception or an unexpected exception occurs
      */
     @Ignore
     @Test
     public void analyzeChebi3Star() throws Exception {
-        this.initialize(this.CHEBI_3STAR_SD_FILE_NAME, this.CHEBI_3STAR_TEST_IDENTIFIER, false);
+        this.initializeWithFileOperations(this.CHEBI_3STAR_SD_FILE_PATH, this.CHEBI_3STAR_TEST_IDENTIFIER);
         Assume.assumeTrue(this.isTestAbleToRun);
         
-        System.out.println("Loading file named: " + this.CHEBI_3STAR_SD_FILE_NAME);
-        ClassLoader tmpClassLoader = this.getClass().getClassLoader();
-        File tmpChebiSDFile = new File(tmpClassLoader.getResource(this.SDF_RESOURCES_PATH + this.CHEBI_3STAR_SD_FILE_NAME)
-                .getFile());
+        System.out.println("\nLoading file with path: " + this.CHEBI_3STAR_SD_FILE_PATH);
+        File tmpChebiSDFile = new File(this.CHEBI_3STAR_SD_FILE_PATH);
         int tmpRequiredNumberOfReaders = 5;
         IteratingSDFReader[] tmpReaders = new IteratingSDFReader[tmpRequiredNumberOfReaders];
         try {
@@ -645,7 +657,10 @@ public class ErtlFunctionalGroupsFinderEvaluationTest extends CDKTestCase {
         this.calculateAbsoluteFGFrequencies(tmpReaders[4], this.CDK_LEGACY_MODEL_SETTINGS_KEY, tmpCDKLegacyModel, tmpAreMultiplesCounted);
         
         System.out.println("\nAll analyses are done!");
-        this.postProcessAndSaveData();
+        for (IteratingSDFReader tmpReader : tmpReaders) {
+            tmpReader.close();
+        }
+        this.saveData();
         System.out.println("\nFinished!");
         System.out.println("\nNumber of occured exceptions: " + this.exceptionsCounter);
     }
@@ -657,17 +672,15 @@ public class ErtlFunctionalGroupsFinderEvaluationTest extends CDKTestCase {
      * Difference to analyzeChebi3Star(): If the same functional group occurs multiple times in the same molecule
      * it is counted only once
      *
-     * @throws java.lang.Exception if initialize() throws an exception or an unexpected exception occurs
+     * @throws java.lang.Exception if initializeWithFileOperations() throws an exception or an unexpected exception occurs
      */
     @Test
     public void analyzeChebi3StarNoMultiples() throws Exception {
-        this.initialize(this.CHEBI_3STAR_SD_FILE_NAME, this.CHEBI_3STAR_NO_MULTIPLES_TEST_IDENTIFIER, false);
+        this.initializeWithFileOperations(this.CHEBI_3STAR_SD_FILE_PATH, this.CHEBI_3STAR_NO_MULTIPLES_TEST_IDENTIFIER);
         Assume.assumeTrue(this.isTestAbleToRun);
         
-        System.out.println("Loading file named: " + this.CHEBI_3STAR_SD_FILE_NAME);
-        ClassLoader tmpClassLoader = this.getClass().getClassLoader();
-        File tmpChebiSDFile = new File(tmpClassLoader.getResource(this.SDF_RESOURCES_PATH + this.CHEBI_3STAR_SD_FILE_NAME)
-                .getFile());
+        System.out.println("\nLoading file with path: " + this.CHEBI_3STAR_SD_FILE_PATH);
+        File tmpChebiSDFile = new File(this.CHEBI_3STAR_SD_FILE_PATH);
         int tmpRequiredNumberOfReaders = 5;
         IteratingSDFReader[] tmpReaders = new IteratingSDFReader[tmpRequiredNumberOfReaders];
         try {
@@ -699,7 +712,10 @@ public class ErtlFunctionalGroupsFinderEvaluationTest extends CDKTestCase {
         this.calculateAbsoluteFGFrequencies(tmpReaders[4], this.CDK_LEGACY_MODEL_SETTINGS_KEY, tmpCDKLegacyModel, tmpAreMultiplesCounted);
         
         System.out.println("\nAll analyses are done!");
-        this.postProcessAndSaveData();
+        for (IteratingSDFReader tmpReader : tmpReaders) {
+            tmpReader.close();
+        }
+        this.saveData();
         System.out.println("\nFinished!");
         System.out.println("\nNumber of occured exceptions: " + this.exceptionsCounter);
     }
@@ -710,18 +726,16 @@ public class ErtlFunctionalGroupsFinderEvaluationTest extends CDKTestCase {
      * <p>
      * (Functional groups occurring multiple times in the same molecule are counted multiple times)
      *
-     * @throws java.lang.Exception if initialize() throws an exception or an unexpected exception occurs
+     * @throws java.lang.Exception if initializeWithFileOperations() throws an exception or an unexpected exception occurs
      */
     @Ignore
     @Test
     public void analyzeChembl() throws Exception {
-        this.initialize(this.CHEMBL_SD_FILE_NAME, this.CHEMBL_TEST_IDENTIFIER, false);
+        this.initializeWithFileOperations(this.CHEMBL_SD_FILE_PATH, this.CHEMBL_TEST_IDENTIFIER);
         Assume.assumeTrue(this.isTestAbleToRun);
         
-        System.out.println("Loading file named: " + this.CHEMBL_SD_FILE_NAME);
-        ClassLoader tmpClassLoader = this.getClass().getClassLoader();
-        File tmpChebiSDFile = new File(tmpClassLoader.getResource(this.SDF_RESOURCES_PATH + this.CHEMBL_SD_FILE_NAME)
-                .getFile());
+        System.out.println("\nLoading file with path: " + this.CHEMBL_SD_FILE_PATH);
+        File tmpChebiSDFile = new File(this.CHEMBL_SD_FILE_PATH);
         int tmpRequiredNumberOfReaders = 5;
         IteratingSDFReader[] tmpReaders = new IteratingSDFReader[tmpRequiredNumberOfReaders];
         try {
@@ -753,7 +767,10 @@ public class ErtlFunctionalGroupsFinderEvaluationTest extends CDKTestCase {
         this.calculateAbsoluteFGFrequencies(tmpReaders[4], this.CDK_LEGACY_MODEL_SETTINGS_KEY, tmpCDKLegacyModel, tmpAreMultiplesCounted);
         
         System.out.println("\nAll analyses are done!");
-        this.postProcessAndSaveData();
+        for (IteratingSDFReader tmpReader : tmpReaders) {
+            tmpReader.close();
+        }
+        this.saveData();
         System.out.println("\nFinished!");
         System.out.println("\nNumber of occured exceptions: " + this.exceptionsCounter);
     }
@@ -765,18 +782,16 @@ public class ErtlFunctionalGroupsFinderEvaluationTest extends CDKTestCase {
      * Difference to analyzeChembl(): If the same functional group occurs multiple times in the same molecule
      * it is counted only once
      *
-     * @throws java.lang.Exception if initialize() throws an exception or an unexpected exception occurs
+     * @throws java.lang.Exception if initializeWithFileOperations() throws an exception or an unexpected exception occurs
      */
     @Ignore
     @Test
     public void analyzeChemblNoMultiples() throws Exception {
-        this.initialize(this.CHEMBL_SD_FILE_NAME, this.CHEMBL_NO_MULTIPLES_TEST_IDENTIFIER, false);
+        this.initializeWithFileOperations(this.CHEMBL_SD_FILE_PATH, this.CHEMBL_NO_MULTIPLES_TEST_IDENTIFIER);
         Assume.assumeTrue(this.isTestAbleToRun);
         
-        System.out.println("Loading file named: " + this.CHEMBL_SD_FILE_NAME);
-        ClassLoader tmpClassLoader = this.getClass().getClassLoader();
-        File tmpChebiSDFile = new File(tmpClassLoader.getResource(this.SDF_RESOURCES_PATH + this.CHEMBL_SD_FILE_NAME)
-                .getFile());
+        System.out.println("\nLoading file with path: " + this.CHEMBL_SD_FILE_PATH);
+        File tmpChebiSDFile = new File(this.CHEMBL_SD_FILE_PATH);
         int tmpRequiredNumberOfReaders = 5;
         IteratingSDFReader[] tmpReaders = new IteratingSDFReader[tmpRequiredNumberOfReaders];
         try {
@@ -808,7 +823,10 @@ public class ErtlFunctionalGroupsFinderEvaluationTest extends CDKTestCase {
         this.calculateAbsoluteFGFrequencies(tmpReaders[4], this.CDK_LEGACY_MODEL_SETTINGS_KEY, tmpCDKLegacyModel, tmpAreMultiplesCounted);
         
         System.out.println("\nAll analyses are done!");
-        this.postProcessAndSaveData();
+        for (IteratingSDFReader tmpReader : tmpReaders) {
+            tmpReader.close();
+        }
+        this.saveData();
         System.out.println("\nFinished!");
         System.out.println("\nNumber of occured exceptions: " + this.exceptionsCounter);
     }
@@ -819,18 +837,16 @@ public class ErtlFunctionalGroupsFinderEvaluationTest extends CDKTestCase {
      * <p>
      * (Functional groups occurring multiple times in the same molecule are counted multiple times)
      *
-     * @throws java.lang.Exception if initialize() throws an exception or an unexpected exception occurs
+     * @throws java.lang.Exception if initializeWithFileOperations() throws an exception or an unexpected exception occurs
      */
     @Ignore
     @Test
     public void analyzeCycleFinderDependency() throws Exception {
-        this.initialize(this.CHEBI_SD_FILE_NAME, this.CYCLE_FINDER_TEST_IDENTIFIER, false);
+        this.initializeWithFileOperations(this.CHEBI_SD_FILE_PATH, this.CYCLE_FINDER_TEST_IDENTIFIER);
         Assume.assumeTrue(this.isTestAbleToRun);
         
-        System.out.println("Loading file named: " + this.CHEBI_SD_FILE_NAME);
-        ClassLoader tmpClassLoader = this.getClass().getClassLoader();
-        File tmpChebiSDFile = new File(tmpClassLoader.getResource(this.SDF_RESOURCES_PATH + this.CHEBI_SD_FILE_NAME)
-                .getFile());
+        System.out.println("\nLoading file with path: " + this.CHEBI_SD_FILE_PATH);
+        File tmpChebiSDFile = new File(this.CHEBI_SD_FILE_PATH);
         int tmpRequiredNumberOfReaders = 6;
         IteratingSDFReader[] tmpReaders = new IteratingSDFReader[tmpRequiredNumberOfReaders];
         try {
@@ -862,9 +878,62 @@ public class ErtlFunctionalGroupsFinderEvaluationTest extends CDKTestCase {
         this.calculateAbsoluteFGFrequencies(tmpReaders[5], "cdkAromaticSet", tmpDaylightModelCdkAromaticSet, tmpAreMultiplesCounted);
         
         System.out.println("\nAll analyses are done!");
-        this.postProcessAndSaveData();
+        for (IteratingSDFReader tmpReader : tmpReaders) {
+            tmpReader.close();
+        }
+        this.saveData();
         System.out.println("\nFinished!");
         System.out.println("\nNumber of occured exceptions: " + this.exceptionsCounter);
+    }
+    
+    /**
+     * Testing the ErtlFunctionalGroupsFinder.find() methods performance on ChEBI.
+     * 
+     * @throws java.lang.Exception if initializeWithFileOperations() throws an exception or the IteratingSDFReader 
+     * can not be closed or an unexpectedException ocurrs
+     */
+    @Ignore
+    @Test
+    public void testPerformance() throws Exception {
+        this.initializeWithFileOperations(this.CHEBI_SD_FILE_PATH, "PerformanceTest");
+        Assume.assumeTrue(this.isTestAbleToRun);
+        
+        System.out.println("\nLoading file with path: " + this.CHEBI_SD_FILE_PATH);
+        File tmpChebiSDFile = new File(this.CHEBI_SD_FILE_PATH);
+        IteratingSDFReader tmpReader = null;
+        try {
+            tmpReader = new IteratingSDFReader(new FileInputStream(tmpChebiSDFile),
+                    DefaultChemObjectBuilder.getInstance(), true);
+        } catch (FileNotFoundException aFileNotFoundException) {
+            System.out.println("\nSD file could not be found. Test is ignored.");
+            Assume.assumeTrue(false);
+            return;
+        }
+        List<IAtomContainer> tmpMoleculesList = new LinkedList<>();
+        Aromaticity tmpCdkLegacyModel = Aromaticity.cdkLegacy();
+        while (tmpReader.hasNext()) {
+            try {
+                IAtomContainer tmpMolecule = (IAtomContainer) tmpReader.next();
+                tmpMolecule = this.applyFiltersAndPreprocessing(tmpMolecule);
+                if (tmpMolecule.getProperty(this.MOLECULE_MUST_BE_FILTERED_PROPERTY_KEY)) {
+                    continue;
+                }
+                tmpCdkLegacyModel.apply(tmpMolecule);
+                tmpMoleculesList.add(tmpMolecule);
+            } catch (Exception anException) {
+                /*No logging required here, it is a simple performance test*/
+            }
+        }
+        tmpReader.close();
+        IAtomContainer[] tmpMoleculesArray = new IAtomContainer[tmpMoleculesList.size()];
+        tmpMoleculesArray = tmpMoleculesList.toArray(tmpMoleculesArray);
+        System.out.println("\nDone Loading database. Found and processed " + tmpMoleculesArray.length + " valid molecules.");
+        long tmpStartTime = System.currentTimeMillis();
+        for (IAtomContainer tmpMolecule : tmpMoleculesArray) {
+            this.ertlFGFinderGenOn.find(tmpMolecule, false);
+        }
+        long tmpEndTime = System.currentTimeMillis();
+        System.out.println("\nExtraction of functional groups from these molecules took " + (tmpEndTime - tmpStartTime) + " ms.\n");
     }
     //</editor-fold>
     
@@ -876,7 +945,7 @@ public class ErtlFunctionalGroupsFinderEvaluationTest extends CDKTestCase {
      */
     @Test
     public void testMoleculeHashGeneratorSettings() throws Exception {
-        this.initialize("", "HashGeneratorTest", true);
+        this.initialize(false, "");
         SmilesParser tmpSmilesParser = new SmilesParser(DefaultChemObjectBuilder.getInstance());
         
         /*Chebi70986, Chebi16238 and Chebi57692 all contain the same functional group with pseudo SMILES code
@@ -950,63 +1019,13 @@ public class ErtlFunctionalGroupsFinderEvaluationTest extends CDKTestCase {
      */
     @Test
     public void testPreprocessing() throws Exception {
-        this.initialize("", "PreprocessingTest", true);
+        this.initialize(false, "");
         String tmpSmiles = "CC[O-].C";
     	SmilesParser tmpSmilesParser = new SmilesParser(DefaultChemObjectBuilder.getInstance());
         IAtomContainer tmpMol = tmpSmilesParser.parseSmiles(tmpSmiles);
         tmpMol = this.applyFiltersAndPreprocessing(tmpMol);
-	SmilesGenerator sg = SmilesGenerator.unique();
-	Assert.assertEquals("OCC", sg.create(tmpMol));
-    }
-    
-    /**
-     * Testing the ErtlFunctionalGroupsFinder.find() methods performance on ChEBI.
-     * 
-     * @throws java.lang.Exception if initialize() throws an exception or the IteratingSDFReader can not be closed
-     */
-    @Test
-    public void testPerformance() throws Exception {
-        this.initialize(this.CHEBI_SD_FILE_NAME, "PerformanceTest", false);
-        Assume.assumeTrue(this.isTestAbleToRun);
-        
-        System.out.println("Loading file named: " + this.CHEBI_SD_FILE_NAME);
-        ClassLoader tmpClassLoader = this.getClass().getClassLoader();
-        File tmpChebiSDFile = new File(tmpClassLoader.getResource(this.SDF_RESOURCES_PATH + this.CHEBI_SD_FILE_NAME)
-                .getFile());
-        IteratingSDFReader tmpReader = null;
-        try {
-            tmpReader = new IteratingSDFReader(new FileInputStream(tmpChebiSDFile),
-                    DefaultChemObjectBuilder.getInstance(), true);
-        } catch (FileNotFoundException aFileNotFoundException) {
-            System.out.println("\nSD file could not be found. Test is ignored.");
-            Assume.assumeTrue(false);
-            return;
-        }
-        List<IAtomContainer> tmpMoleculesList = new LinkedList<>();
-        Aromaticity tmpCdkLegacyModel = Aromaticity.cdkLegacy();
-        while (tmpReader.hasNext()) {
-            try {
-                IAtomContainer tmpMolecule = (IAtomContainer) tmpReader.next();
-                tmpMolecule = this.applyFiltersAndPreprocessing(tmpMolecule);
-                if (tmpMolecule.getProperty(this.MOLECULE_MUST_BE_FILTERED_PROPERTY_KEY)) {
-                    continue;
-                }
-                tmpCdkLegacyModel.apply(tmpMolecule);
-                tmpMoleculesList.add(tmpMolecule);
-            } catch (Exception anException) {
-                /*No logging required here, it is a simple performance test*/
-            }
-        }
-        tmpReader.close();
-        IAtomContainer[] tmpMoleculesArray = new IAtomContainer[tmpMoleculesList.size()];
-        tmpMoleculesArray = tmpMoleculesList.toArray(tmpMoleculesArray);
-        System.out.println("\nDone Loading database. Found and processed " + tmpMoleculesArray.length + " valid molecules.");
-        long tmpStartTime = System.currentTimeMillis();
-        for (IAtomContainer tmpMolecule : tmpMoleculesArray) {
-            this.ertlFGFinderGenOn.find(tmpMolecule, false);
-        }
-        long tmpEndTime = System.currentTimeMillis();
-        System.out.println("\nExtraction of functional groups from these molecules took " + (tmpEndTime - tmpStartTime) + " ms.\n");
+	SmilesGenerator tmpGenerator = SmilesGenerator.unique();
+	Assert.assertEquals("OCC", tmpGenerator.create(tmpMol));
     }
     //</editor-fold>
     
@@ -1014,49 +1033,89 @@ public class ErtlFunctionalGroupsFinderEvaluationTest extends CDKTestCase {
     
     //<editor-fold defaultstate="collapsed" desc="Private methods">
     /**
+     * Initializes all class variables except the working directory and the PrintWriter instances. This method should be 
+     * called directly when a test does not require any of the specific file operations like logging or reading an SD file.
+     * 
+     * @param aPrintHeaderToConsole true, if this method is called directly (not by initializeWithFileOperations()) and 
+     * should remark on the console that a new test was started
+     * @param aTestIdentifier if aPrintHeaderToConsole this ID will be printed to the console
+     */
+    private void initialize(boolean aPrintHeaderToConsole, String aTestIdentifier) {
+        if (aPrintHeaderToConsole) {
+            System.out.println("\n#########################################################################\n");
+            System.out.println("Starting new test, identifier: " + aTestIdentifier);
+            System.out.println("\nInitializing class variables...");
+        }
+        this.smilesGenerator = new SmilesGenerator(this.SMILES_GENERATOR_OUTPUT_MODE);
+        this.molHashGenerator = new HashGeneratorMaker()
+                .depth(8)
+                .elemental()
+                //following line is used instead of .orbital() because the atom hybridizations take more information into 
+                //account than the bond order sum but that is not required here
+                .encode(BasicAtomEncoder.BOND_ORDER_SUM)
+                .encode(CustomAtomEncoder.AROMATICITY) //See enum CustomAtomEncoder below
+                .molecular();
+        this.ertlFGFinderGenOff = new ErtlFunctionalGroupsFinder(Mode.NO_GENERALIZATION);
+        this.ertlFGFinderGenOn = new ErtlFunctionalGroupsFinder(Mode.DEFAULT);
+        this.masterHashMap = new HashMap(this.MASTER_HASHMAP_INITIAL_CAPACITY, this.MASTER_HASHMAP_LOAD_FACTOR);
+        this.settingsKeysList = new LinkedList<>();
+        this.exceptionsCounter = 0;
+        this.areFilteredMoleculesLogged = false;
+        String[] tmpMetalNumbersStrings = this.NON_METALLIC_ATOMIC_NUMBERS.split(",");
+        Integer[] tmpMetalNumbersInt = new Integer[tmpMetalNumbersStrings.length];
+        for (int i = 0; i < tmpMetalNumbersStrings.length; i++) {
+            tmpMetalNumbersInt[i] = Integer.parseInt(tmpMetalNumbersStrings[i]);
+        }
+        this.nonMetallicAtomicNumbersSet = new HashSet(Arrays.asList(tmpMetalNumbersInt));
+        this.pseudoSmilesAromaticElementToPlaceholderElementMap = new HashMap<>(10, 1);
+        this.pseudoSmilesAromaticElementToPlaceholderElementMap.put("C", "Ce");
+        this.pseudoSmilesAromaticElementToPlaceholderElementMap.put("N", "Nd");
+        this.pseudoSmilesAromaticElementToPlaceholderElementMap.put("S", "Sm");
+        this.pseudoSmilesAromaticElementToPlaceholderElementMap.put("O", "Os");
+        this.pseudoSmilesAromaticElementToPlaceholderElementMap.put("Se", "Sc");
+        this.pseudoSmilesAromaticElementToPlaceholderElementMap.put("P", "Pm");
+        this.pseudoSmilesAromaticElementToPlaceholderElementMap.put("R", "Es");
+        this.pseudoSmilesPlaceholderElementToPseudoSmilesSymbolMap = new HashMap<>(10, 1);
+        this.pseudoSmilesPlaceholderElementToPseudoSmilesSymbolMap.put("Es", this.PSEUDO_SMILES_R_ATOM);
+        this.pseudoSmilesPlaceholderElementToPseudoSmilesSymbolMap.put("Pm", this.PSEUDO_SMILES_AROMATIC_PHOSPHOR);
+        this.pseudoSmilesPlaceholderElementToPseudoSmilesSymbolMap.put("Sc", this.PSEUDO_SMILES_AROMATIC_SELENIUM);
+        this.pseudoSmilesPlaceholderElementToPseudoSmilesSymbolMap.put("Os", this.PSEUDO_SMILES_AROMATIC_OXYGEN);
+        this.pseudoSmilesPlaceholderElementToPseudoSmilesSymbolMap.put("Sm", this.PSEUDO_SMILES_AROMATIC_SULPHUR);
+        this.pseudoSmilesPlaceholderElementToPseudoSmilesSymbolMap.put("Nd", this.PSEUDO_SMILES_AROMATIC_NITROGEN);
+        this.pseudoSmilesPlaceholderElementToPseudoSmilesSymbolMap.put("Ce", this.PSEUDO_SMILES_AROMATIC_CARBON);
+        this.isTestAbleToRun = true;
+        if (aPrintHeaderToConsole) {
+            System.out.println("\n\tDone initializing class variables.\n");
+        }
+    }
+    /**
      * Initializes all class variables and determines the output directory.
      * 
-     * @param aFileName name of the SD file to analyze for a quick pre-check if it is present and the test is therefore 
-     * meant to run
+     * @param aPathOfSDFile absolute path of the SD file to analyze for a quick pre-check if it is present and the test 
+     * is therefore meant to run; may be empty but not null
      * @param aTestIdentifier a folder with this name will be created in the output directory and it will be added to 
      * the output and log files' names for association of test and files; may be null or empty
-     * @param aRunAnyway if true, the test is not aborted even if the file with aFileName can not be found
-     * @throws java.lang.Exception if one the FileWriter instances can not be instantiated or more than 
-     * Integer.MAX-VALUE tests are to be run this minute (error in the naming of output files) or an unexpected 
-     * exception occurs.
+     * @throws java.lang.Exception if one the FileWriter instances can not be instantiated, more than 
+     * Integer.MAX-VALUE tests are to be run this minute (error in the naming of output files), aPathOfSDFile is null or 
+     * an unexpected exception occurs.
      */
-    private void initialize(String aFileName, String aTestIdentifier, boolean aRunAnyway) throws Exception {
+    private void initializeWithFileOperations(String aPathOfSDFile, String aTestIdentifier) throws Exception {
         System.out.println("\n#########################################################################\n");
         System.out.println("Starting new test, identifier: " + aTestIdentifier);
         System.out.println("\nInitializing class variables...");
         this.isTestAbleToRun = true;
         //First, check if the SD file is present and ignore test if it is not
-        ClassLoader tmpClassLoader = this.getClass().getClassLoader();
-        File tmpSDFile;
-        try {
-            if (aFileName.equals("") || aFileName == null) {
-                aFileName = "[no name was given]";
-                throw new NullPointerException();
-            }
-            tmpSDFile = new File(tmpClassLoader.getResource(this.SDF_RESOURCES_PATH + aFileName).getFile());
-        } catch (NullPointerException aNullPointerException) {
-            //getFile() throws a NullPointerException if the required file can not be found
-            System.out.println("\n\tUnable to find a file named " + aFileName + " in the resources directory.");
-            if (!aRunAnyway) {
-                System.out.println("Test is ignored.");
-                this.isTestAbleToRun = false;
-                Assume.assumeTrue(false);
-                return;
-            } else {
-                System.out.println("\tAs specified, the test will be run anyway.");
-            }
+        File tmpSDFile = new File(aPathOfSDFile);
+        if (!tmpSDFile.canRead() || tmpSDFile.getAbsoluteFile().getParent() == null) {
+            System.out.println("\n\tUnable to find or read a file with path \"" + aPathOfSDFile + "\" or to get its parent directory.");
+            System.out.println("\nTest is ignored.");
+            this.isTestAbleToRun = false;
+            Assume.assumeTrue(false);
+            return;
         }
         //Determine the output directory
-        String tmpOutputRootDirectory = System.getProperty(this.SYSTEM_PROPERTY_FOR_OUTPUT_DIRECTORY);
-        if (tmpOutputRootDirectory == null || tmpOutputRootDirectory.isEmpty()) {
-            throw new SecurityException("The system property \"" + this.SYSTEM_PROPERTY_FOR_OUTPUT_DIRECTORY + "\" is empty!");
-        }
-        this.outputDirectory = tmpOutputRootDirectory + this.OUTPUT_DIRECTORY_FROM_SYSTEM_PROPERTY + File.separator + aTestIdentifier;
+        String tmpOutputRootDirectory = tmpSDFile.getAbsoluteFile().getParent() + File.separator;
+        this.outputDirectory = tmpOutputRootDirectory + this.OUTPUT_FOLDER_FROM_WORKING_DIRECTORY + File.separator + aTestIdentifier;
         File tmpOutputDirectoryFile = new File(this.outputDirectory);
         if (!tmpOutputDirectoryFile.exists()) {
             tmpOutputDirectoryFile.mkdirs();
@@ -1126,29 +1185,8 @@ public class ErtlFunctionalGroupsFinderEvaluationTest extends CDKTestCase {
         FileWriter tmpOutputFileWriter = new FileWriter(tmpOutputFile);
         this.dataOutputPrintWriter = new PrintWriter(tmpOutputFileWriter);
         System.out.println("\tThe absolute functional groups frequencies will be written to: " + tmpOutputFile.getName());
-        
-        this.smilesGenerator = new SmilesGenerator(this.SMILES_GENERATOR_OUTPUT_MODE);
-        this.molHashGenerator = new HashGeneratorMaker()
-                .depth(8)
-                .elemental()
-                //following line is used instead of .orbital() because the atom hybridizations take more information into 
-                //account than the bond order sum but that is not required here
-                .encode(BasicAtomEncoder.BOND_ORDER_SUM)
-                .encode(CustomAtomEncoder.AROMATICITY) //See enum CustomAtomEncoder below
-                .molecular();
-        this.ertlFGFinderGenOff = new ErtlFunctionalGroupsFinder(Mode.NO_GENERALIZATION);
-        this.ertlFGFinderGenOn = new ErtlFunctionalGroupsFinder(Mode.DEFAULT);
-        this.masterHashMap = new HashMap(this.MASTER_HASHMAP_INITIAL_CAPACITY, this.MASTER_HASHMAP_LOAD_FACTOR);
-        this.settingsKeysList = new LinkedList<>();
-        this.exceptionsCounter = 0;
-        this.areFilteredMoleculesLogged = false;
-        String[] tmpMetalNumbersStrings = this.NON_METALLIC_ATOMIC_NUMBERS.split(",");
-        Integer[] tmpMetalNumbersInt = new Integer[tmpMetalNumbersStrings.length];
-        for (int i = 0; i < tmpMetalNumbersStrings.length; i++) {
-            tmpMetalNumbersInt[i] = Integer.parseInt(tmpMetalNumbersStrings[i]);
-        }
-        this.nonMetallicAtomicNumbersSet = new HashSet(Arrays.asList(tmpMetalNumbersInt));
-        System.out.println("\n\tDone initializing class variables.\n");
+        this.areFileOperationsActivated = true;
+        this.initialize(false, aTestIdentifier);
     }
     
     /**
@@ -1208,7 +1246,7 @@ public class ErtlFunctionalGroupsFinderEvaluationTest extends CDKTestCase {
                         tmpMetallicCounter++;
                     }
                     tmpFilteredMoleculesCounter++;
-                    if (!this.areFilteredMoleculesLogged) {
+                    if (!this.areFilteredMoleculesLogged && this.areFileOperationsActivated) {
                         this.logFilteredMolecule(tmpMolecule, tmpFilteredMoleculesCounter, tmpCauseForFiltering);
                     }
                     continue;
@@ -1237,10 +1275,12 @@ public class ErtlFunctionalGroupsFinderEvaluationTest extends CDKTestCase {
                 tmpFunctionalGroupsGeneralized = this.ertlFGFinderGenOn.find(tmpMolecule, false);
             } catch (Exception anException) {
                 tmpSkippedMoleculesCounter++;
-                if (tmpOriginalMolecule != null) {
-                    this.logException(anException, tmpSettingsKeyForLogging, tmpOriginalMolecule);
-                } else {
-                    this.logException(anException, tmpSettingsKeyForLogging, tmpMolecule);
+                if (this.areFileOperationsActivated) {
+                    if (tmpOriginalMolecule != null) {
+                        this.logException(anException, tmpSettingsKeyForLogging, tmpOriginalMolecule);
+                    } else {
+                        this.logException(anException, tmpSettingsKeyForLogging, tmpMolecule);
+                    }
                 }
                 continue;
             }
@@ -1284,7 +1324,7 @@ public class ErtlFunctionalGroupsFinderEvaluationTest extends CDKTestCase {
     }
     
     /**
-     * Combines all filtering and preprocessing steps. Molecules will be filtered if they contain a not allowed atomic 
+     * Combines all filtering and preprocessing steps. Molecules will be filtered if they contain elements with a not allowed atomic 
      * number (metal, metalloid or 'R' atoms) or if their atom or bond count is zero. If the molecule should be filtered
      * the IAtomContainer property MOLECULE_MUST_BE_FILTERED_PROPERTY_KEY will be set to true and the 
      * CAUSE_FOR_FILTERING_PROPERTY_KEY will give the cause for the filtering.
@@ -1297,7 +1337,7 @@ public class ErtlFunctionalGroupsFinderEvaluationTest extends CDKTestCase {
      * @param aMolecule the molecule to be processed
      * @return the processed molecule
      * @throws CDKException if AtomContainerManipulator.percieveAtomTypesAndConfigureAtoms() or 
-     * applyNeutralizeChargesPreprocessing() throws a CDKException
+ neutralizeCharges() throws a CDKException
      */
     private IAtomContainer applyFiltersAndPreprocessing(IAtomContainer aMolecule) throws CDKException {
         aMolecule.setProperty(this.MOLECULE_MUST_BE_FILTERED_PROPERTY_KEY, false);
@@ -1317,7 +1357,7 @@ public class ErtlFunctionalGroupsFinderEvaluationTest extends CDKTestCase {
         //choose the largest structure for analysis
         //This step must be done prior to the next step!
         if (this.isStructureUnconnected(aMolecule)) {
-            aMolecule = this.applySelectBiggestFragmentPreprocessing(aMolecule);
+            aMolecule = this.selectBiggestFragment(aMolecule);
             aMolecule.setProperty(this.BIGGEST_FRAGMENT_SELECTED_PROPERTY_KEY, true);
         }
         //Filter molecules containing metals, metalloids or "R" atoms
@@ -1328,7 +1368,7 @@ public class ErtlFunctionalGroupsFinderEvaluationTest extends CDKTestCase {
         }
         //Preprocessing: Neutralize charges
         if (this.isMoleculeCharged(aMolecule)) {
-            aMolecule = this.applyNeutralizeChargesPreprocessing(aMolecule);
+            aMolecule = this.neutralizeCharges(aMolecule);
             aMolecule.setProperty(this.CHARGES_NEUTRALIZED_PROPERTY_KEY, true);
         }
         return aMolecule;
@@ -1377,7 +1417,7 @@ public class ErtlFunctionalGroupsFinderEvaluationTest extends CDKTestCase {
      * @param aMolecule the molecule whose biggest fragment should be found
      * @return the biggest unconnected fragment/structure of the given molecule
      */
-    private IAtomContainer applySelectBiggestFragmentPreprocessing(IAtomContainer aMolecule) {
+    private IAtomContainer selectBiggestFragment(IAtomContainer aMolecule) {
         IAtomContainerSet tmpFragmentsSet = ConnectivityChecker.partitionIntoMolecules(aMolecule);
         IAtomContainer tmpBiggestFragment = null;
         for (IAtomContainer tmpFragment : tmpFragmentsSet.atomContainers()) {
@@ -1413,7 +1453,7 @@ public class ErtlFunctionalGroupsFinderEvaluationTest extends CDKTestCase {
      * @throws CDKException if CDKAtomTypeMatcher.findMatchingAtomType() or CDKHydrogenAdder.addImplicitHydrogens 
      * throws a CDKException
      */
-    private IAtomContainer applyNeutralizeChargesPreprocessing(IAtomContainer aMolecule) throws CDKException {
+    private IAtomContainer neutralizeCharges(IAtomContainer aMolecule) throws CDKException {
         for (IAtom tmpAtom : aMolecule.atoms()) {
             if (tmpAtom.getFormalCharge() != 0) {
                 tmpAtom.setFormalCharge(0);
@@ -1482,7 +1522,9 @@ public class ErtlFunctionalGroupsFinderEvaluationTest extends CDKTestCase {
                     //Creation of pseudo SMILES code
                     tmpPseudoSmilesCode = this.getPseudoSmilesCode(tmpFunctionalGroup);
                 } catch (CDKException | NullPointerException | CloneNotSupportedException anException) {
-                    this.logException(anException, aSettingsKey + "Creating SMILES code", tmpFunctionalGroup);
+                    if (this.areFileOperationsActivated) {
+                        this.logException(anException, aSettingsKey + "Creating SMILES code", tmpFunctionalGroup);
+                    }
                     tmpSmilesCode = this.SMILES_CODE_PLACEHOLDER;
                     tmpPseudoSmilesCode = this.SMILES_CODE_PLACEHOLDER;
                 }
@@ -1502,7 +1544,11 @@ public class ErtlFunctionalGroupsFinderEvaluationTest extends CDKTestCase {
      * Note: The IAtomContainer object stored in the master HashMap's inner maps are cloned in this method for pseudo 
      * SMILES creation. And all PrintWriter instances will be closed.
      */
-    private void postProcessAndSaveData() {
+    private void saveData() {
+        if(!this.areFileOperationsActivated) {
+            System.out.println("\nFile operations are not activated, invokation of saveData() is therefore not possible.");
+            return;
+        }
         System.out.println("\nWriting to file...");
         //Writing the output file's header
         String tmpFileHeader = this.HASH_CODE_KEY + this.OUTPUT_FILE_SEPERATOR + this.PSEUDO_SMILES_CODE_KEY 
@@ -1566,27 +1612,9 @@ public class ErtlFunctionalGroupsFinderEvaluationTest extends CDKTestCase {
         for (IAtom tmpAtom : tmpMolecule.atoms()) {
             if (tmpAtom.isAromatic()) {
                 IAtom tmpReplacementAtom = null;
-                if (null != tmpAtom.getSymbol()) switch (tmpAtom.getSymbol()) {
-                    case "C":
-                        tmpReplacementAtom = new Atom("Ce");
-                        break;
-                    case "N":
-                        tmpReplacementAtom = new Atom("Nd");
-                        break;
-                    case "S":
-                        tmpReplacementAtom = new Atom("Sm");
-                        break;
-                    case "O":
-                        tmpReplacementAtom = new Atom("Os");
-                        break;
-                    case "Se":
-                        tmpReplacementAtom = new Atom("Sc");
-                        break;
-                    case "P":
-                        tmpReplacementAtom = new Atom("Pm");
-                        break;
-                    default:
-                        break;
+                if (tmpAtom.getSymbol() != null 
+                        && this.pseudoSmilesAromaticElementToPlaceholderElementMap.containsKey(tmpAtom.getSymbol())) {
+                    tmpReplacementAtom = new Atom(this.pseudoSmilesAromaticElementToPlaceholderElementMap.get(tmpAtom.getSymbol()));
                 }
                 if (tmpReplacementAtom != null) {
                     Integer tmpImplicitHydrogenCount = tmpAtom.getImplicitHydrogenCount();
@@ -1598,7 +1626,7 @@ public class ErtlFunctionalGroupsFinderEvaluationTest extends CDKTestCase {
             tmpAtom.setIsAromatic(false);
             if (tmpAtom instanceof IPseudoAtom && "R".equals(((IPseudoAtom)tmpAtom).getLabel())) {  
                 //second condition: see creation of R atoms in ErtlFunctionalGroupsFinder
-                IAtom tmpReplacementAtom = new Atom("Es");
+                IAtom tmpReplacementAtom = new Atom(this.pseudoSmilesAromaticElementToPlaceholderElementMap.get("R"));
                 Integer tmpImplicitHydrogenCount = tmpAtom.getImplicitHydrogenCount();
                 AtomContainerManipulator.replaceAtomByAtom(tmpMolecule, tmpAtom, tmpReplacementAtom);
                 tmpReplacementAtom.setImplicitHydrogenCount(
@@ -1609,33 +1637,28 @@ public class ErtlFunctionalGroupsFinderEvaluationTest extends CDKTestCase {
             tmpBond.setIsAromatic(false);
         }
         String tmpPseudoSmilesCode = this.smilesGenerator.create(tmpMolecule);
-        tmpPseudoSmilesCode = tmpPseudoSmilesCode
-                .replaceAll("(\\[Es\\])", this.PSEUDO_SMILES_R_ATOM)
-                .replaceAll("(Es)", this.PSEUDO_SMILES_R_ATOM)
-                .replaceAll("(\\[Ce\\])", this.PSEUDO_SMILES_AROMATIC_CARBON)
-                .replaceAll("(Ce)", this.PSEUDO_SMILES_AROMATIC_CARBON)
-                .replaceAll("(\\[Nd\\])", this.PSEUDO_SMILES_AROMATIC_NITROGEN)
-                .replaceAll("(Nd)", this.PSEUDO_SMILES_AROMATIC_NITROGEN)
-                .replaceAll("(\\[Sm\\])", this.PSEUDO_SMILES_AROMATIC_SULPHUR)
-                .replaceAll("(Sm)", this.PSEUDO_SMILES_AROMATIC_SULPHUR)
-                .replaceAll("(\\[Os\\])", this.PSEUDO_SMILES_AROMATIC_OXYGEN)
-                .replaceAll("(Os)", this.PSEUDO_SMILES_AROMATIC_OXYGEN)
-                .replaceAll("(\\[Sc\\])", this.PSEUDO_SMILES_AROMATIC_SELENIUM)
-                .replaceAll("(Sc)", this.PSEUDO_SMILES_AROMATIC_SELENIUM)
-                .replaceAll("(\\[Pm\\])", this.PSEUDO_SMILES_AROMATIC_PHOSPHOR)
-                .replaceAll("(Pm)", this.PSEUDO_SMILES_AROMATIC_PHOSPHOR);
+        for (String tmpPlaceholderElementSymbol : this.pseudoSmilesPlaceholderElementToPseudoSmilesSymbolMap.keySet()) {
+            tmpPseudoSmilesCode = tmpPseudoSmilesCode.replaceAll("(\\[" + tmpPlaceholderElementSymbol + "\\])", 
+                    this.pseudoSmilesPlaceholderElementToPseudoSmilesSymbolMap.get(tmpPlaceholderElementSymbol))
+            .replaceAll("(" + tmpPlaceholderElementSymbol + ")", 
+                    this.pseudoSmilesPlaceholderElementToPseudoSmilesSymbolMap.get(tmpPlaceholderElementSymbol));
+        }
         return tmpPseudoSmilesCode;
     }
     
     /**
      * Logs molecules that are filtered from the SD file to the filtered molecules file with SMILES code, ChEBI name 
-     * and id or ChEMBL id and why they were filtered.
+     * and id or ChEMBL id or CDK title and why they were filtered.
      * 
      * @param aMolecule the filtered molecule to be logged
      * @param aCounter the number of filtered molecules so far (will be written to file)
      * @param aCause why this molecule was filtered
      */
     private void logFilteredMolecule(IAtomContainer aMolecule, int aCounter, String aCause) {
+        if(!this.areFileOperationsActivated) {
+            System.out.println("\nFile operations are not activated, invokation of logFilteredMolecule() is therefore not possible.");
+            return;
+        }
         this.filteredMoleculesPrintWriter.println();
         this.filteredMoleculesPrintWriter.println(aCounter + ". Filtered Molecule");
         try {
@@ -1661,7 +1684,7 @@ public class ErtlFunctionalGroupsFinderEvaluationTest extends CDKTestCase {
     
     /**
      * Logs molecules that raised exceptions somewhere in the processing to the exceptions log file with exception 
-     * message and stack trace, SMILES code ChEBI name and id or ChEMBL id.
+     * message and stack trace, SMILES code ChEBI name and id or ChEMBL id or CDK title.
      * 
      * @param anException the exception caused by the molecule
      * @param aSettingsKey a string representation of the settings tested in the current iteration, 
@@ -1669,6 +1692,10 @@ public class ErtlFunctionalGroupsFinderEvaluationTest extends CDKTestCase {
      * @param aMolecule the exception-causing molecule
      */
     private void logException(Exception anException, String aSettingsKey, IAtomContainer aMolecule) {
+        if(!this.areFileOperationsActivated) {
+            System.out.println("\nFile operations are not activated, invokation of logException() is therefore not possible.");
+            return;
+        }
         this.exceptionsCounter++;
         this.exceptionsPrintWriter.println();
         this.exceptionsPrintWriter.println(this.exceptionsCounter + ". " + anException.getClass() + ": " 
