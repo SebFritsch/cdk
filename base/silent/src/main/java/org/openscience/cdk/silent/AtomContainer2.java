@@ -222,7 +222,7 @@ final class AtomContainer2 extends ChemObject implements IAtomContainer {
         if (bond.getClass() == Bond.class)
             return new BaseBondRef(this, bond, beg, end);
         bond = unbox(bond);
-        if (bond instanceof QueryBondRef)
+        if (bond instanceof IQueryBond)
             return new QueryBondRef(this, (IQueryBond) bond, beg, end);
         return new BaseBondRef(this, bond, beg, end);
     }
@@ -609,15 +609,8 @@ final class AtomContainer2 extends ChemObject implements IAtomContainer {
      */
     @Override
     public IBond getBond(IAtom beg, IAtom end) {
-        AtomRef begref = getAtomRefUnsafe(beg);
-        AtomRef endref = getAtomRefUnsafe(end);
-        if (begref != null && endref != null) {
-            for (IBond bond : begref.bonds()) {
-                if (bond.getOther(begref) == endref)
-                    return bond;
-            }
-        }
-        return null;
+        final AtomRef begref = getAtomRefUnsafe(beg);
+        return begref != null ? begref.getBond(end) : null;
     }
 
     /**
@@ -1620,6 +1613,15 @@ final class AtomContainer2 extends ChemObject implements IAtomContainer {
         @Override
         public final Iterable<IBond> bonds() {
             return bonds;
+        }
+
+        @Override
+        public IBond getBond(IAtom atom) {
+            for (IBond bond : bonds) {
+                if (bond.getOther(this).equals(atom))
+                    return bond;
+            }
+            return null;
         }
 
         @Override

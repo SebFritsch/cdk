@@ -63,11 +63,13 @@ import org.openscience.cdk.tools.manipulator.RingSetManipulator;
 import javax.vecmath.Point2d;
 import javax.vecmath.Vector2d;
 import java.util.AbstractMap.SimpleImmutableEntry;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -234,6 +236,8 @@ public class StructureDiagramGenerator {
                 afix.clear();
                 bfix.clear();
 
+                boolean aggresive = false;
+
                 if (largest != null && largest.getAtomCount() > 1) {
 
                     int idx = largest.getAtom(0).getProperty(CDKConstants.ATOM_ATOM_MAPPING);
@@ -244,12 +248,21 @@ public class StructureDiagramGenerator {
                         idx = atom.getProperty(CDKConstants.ATOM_ATOM_MAPPING);
                         final IAtom src = reference.get(idx);
                         if (src == null) continue;
+                        if (!aggresive) {
+                            // no way to get the container of 'src' without
+                            // lots of refactoring, instead we just use the
+                            // new API points - first checking these will not
+                            // fail
+                            if (src.getContainer() != null
+                                && atom.getContainer() != null
+                                && AtomPlacer.isColinear(src, src.bonds())
+                                   != AtomPlacer.isColinear(atom, atom.bonds()))
+                                continue;
+                        }
                         atom.setPoint2d(new Point2d(src.getPoint2d()));
                         afix.put(atom, src);
                     }
                 }
-
-                boolean aggresive = false;
 
                 if (!afix.isEmpty()) {
                     if (aggresive) {
@@ -288,11 +301,57 @@ public class StructureDiagramGenerator {
                                 }
                             }
                         }
-                        // XXX: can do better
+
                         afix.clear();
                         for (IBond bond : bfix) {
                             afix.put(bond.getBegin(), null);
                             afix.put(bond.getEnd(), null);
+                        }
+
+                        int[] parts2 = new int[mol.getAtomCount()];
+                        int numParts = 0;
+                        Deque<IAtom> queue = new ArrayDeque<>();
+                        for (IAtom atom : afix.keySet()) {
+                            if (parts2[mol.indexOf(atom)] != 0)
+                                continue;
+                            parts2[mol.indexOf(atom)] = ++numParts;
+                            for (IBond bond : mol.getConnectedBondsList(atom)) {
+                                if (bfix.contains(bond))
+                                    queue.add(bond.getOther(atom));
+                            }
+                            while (!queue.isEmpty()) {
+                                atom = queue.poll();
+                                if (parts2[mol.indexOf(atom)] != 0)
+                                    continue;
+                                parts2[mol.indexOf(atom)] = numParts;
+                                for (IBond bond : mol.getConnectedBondsList(atom)) {
+                                    if (bfix.contains(bond))
+                                        queue.add(bond.getOther(atom));
+                                }
+                            }
+                        }
+
+                        if (numParts > 1) {
+                            int best     = 0;
+                            int bestSize = 0;
+                            for (int part = 1; part <= numParts; part++) {
+                                int size = 0;
+                                for (int i = 0; i < parts2.length; i++) {
+                                    if (parts2[i] == part)
+                                        ++size;
+                                }
+                                if (size > bestSize) {
+                                    bestSize = size;
+                                    best = part;
+                                }
+                            }
+
+                            for (IAtom atom : new ArrayList<>(afix.keySet())) {
+                                if (parts2[mol.indexOf(atom)] != best) {
+                                    afix.remove(atom);
+                                    bfix.removeAll(mol.getConnectedBondsList(atom));
+                                }
+                            }
                         }
                     }
                 }
