@@ -1,4 +1,4 @@
-/* Copyright (C) 1997-2018  The Chemistry Development Kit (CDK) project
+/* Copyright (C) 1997-2019  The Chemistry Development Kit (CDK) project
  *
  * Contact: cdk-devel@lists.sourceforge.net
  *
@@ -272,13 +272,6 @@ public class ErtlFunctionalGroupsFinderTest extends CDKTestCase {
 		ErtlFunctionalGroupsFinder fgFinder = new ErtlFunctionalGroupsFinder();
 		List<IAtomContainer> fGs = fgFinder.find(mol);
 
-		//FIXME just to test if aromacity is relevant for isomorphism testing -> REMOVE!
-//		for(IAtomContainer fG : fGs){
-//			for(IAtom a : fG.atoms()) {
-//				a.setIsAromatic(false);
-//			}
-//		}
-
 		// get expected groups
         List<IAtomContainer>	expectedFGs = new LinkedList<>();
         for(String fGString : fGStrings) {
@@ -315,8 +308,6 @@ public class ErtlFunctionalGroupsFinderTest extends CDKTestCase {
 			Assert.assertThat("Groups #" + i + ": not isomorph", pattern.matches(cAct), is(true));
     		
     		Mappings mappings = pattern.matchAll(cAct);
-
-    		//TODO replace extra aromacity checking by using custom QueryAtomContainer.create(...)
 
     		Map<IAtom, IAtom> atomMap = mappings.toAtomMap().iterator().next();
     		for (Map.Entry<IAtom,IAtom> e : atomMap.entrySet()) {

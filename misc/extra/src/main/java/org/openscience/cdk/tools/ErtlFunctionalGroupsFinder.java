@@ -1,4 +1,4 @@
-/* Copyright (C) 1997-2018  The Chemistry Development Kit (CDK) project
+/* Copyright (C) 1997-2019  The Chemistry Development Kit (CDK) project
  *
  * Contact: cdk-devel@lists.sourceforge.net
  *
@@ -16,6 +16,8 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
  */
+
+
 package org.openscience.cdk.tools;
 
 import java.util.ArrayDeque;
@@ -565,14 +567,14 @@ public class ErtlFunctionalGroupsFinder {
     		}
     			
     		// get atoms to process
-    		IAtom[] fGroupAtoms = new IAtom[fGroup.getAtomCount()];
+    		IAtom[] fGroupAtoms = new IAtom[fGroup.getAtomCount()]; //TODO easier looping su.
     		Iterator<IAtom> atomIter = fGroup.atoms().iterator();
     		for(int i=0; i<fGroup.getAtomCount(); i++) {
     			fGroupAtoms[i] = atomIter.next();
     		}
     		
     		// process atoms...
-    		for(IAtom atom : fGroupAtoms) {    	
+    		for(IAtom atom : fGroupAtoms) {    	//TODO easier looping? so.
     			List<EnvironmentalC> environment = environmentsMap.get(atom);
     			
     			if(environment == null) {
@@ -684,7 +686,7 @@ public class ErtlFunctionalGroupsFinder {
     	int rAtomsForCCount = rAtomCount;
     	if(atom.getAtomicNumber() == 8 && atom.getImplicitHydrogenCount() == 1) {
     		addHydrogens(atom, 1, container);
-			atom.setImplicitHydrogenCount(0);
+			atom.setImplicitHydrogenCount(0); //TODO can be removed?
 			if(isDbg()) log.debug("		expanded hydrogen on connected OH-Group");
     	}
     	else if(isHeteroatom(atom)) rAtomCount += atom.getImplicitHydrogenCount();
