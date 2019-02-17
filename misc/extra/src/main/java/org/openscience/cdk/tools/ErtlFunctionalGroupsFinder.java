@@ -33,6 +33,7 @@ import java.util.Queue;
 import java.util.Set;
 
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Lists;
 import org.openscience.cdk.Atom;
 import org.openscience.cdk.AtomContainer;
 import org.openscience.cdk.CDKConstants;
@@ -567,14 +568,10 @@ public class ErtlFunctionalGroupsFinder {
     		}
     			
     		// get atoms to process
-    		IAtom[] fGroupAtoms = new IAtom[fGroup.getAtomCount()]; //TODO easier looping su.
-    		Iterator<IAtom> atomIter = fGroup.atoms().iterator();
-    		for(int i=0; i<fGroup.getAtomCount(); i++) {
-    			fGroupAtoms[i] = atomIter.next();
-    		}
+			List<IAtom> fGroupAtoms = Lists.newArrayList(fGroup.atoms());
     		
     		// process atoms...
-    		for(IAtom atom : fGroupAtoms) {    	//TODO easier looping? so.
+    		for(IAtom atom : fGroupAtoms) {
     			List<EnvironmentalC> environment = environmentsMap.get(atom);
     			
     			if(environment == null) {
