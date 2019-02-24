@@ -117,8 +117,8 @@ public class ErtlFunctionalGroupsFinderPerformanceTest {
      * if an unexpected exception occurs that prevents the application from working, e.g. an IllegalArgumentException 
      * (will be logged to a file, not printed on the console).
      *
-     * @param anArgs the command line arguments, anArgs[0] must be the name of the SD file to load and anArgs[1] must 
-     * be the number of different threads to use
+     * @param anArgs the command line arguments, anArgs[0] must be the name of the SD file to load (must be located in 
+     * the same directory as the application's JAR file) and anArgs[1] must be the number of different threads to use
      * @throws java.io.IOException if the constructor is unable to open a text file for logging occurred exceptions
      */
     public ErtlFunctionalGroupsFinderPerformanceTest(String[] anArgs) throws IOException {
