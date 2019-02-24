@@ -1,21 +1,3 @@
-/* Copyright (C) 1997-2019  The Chemistry Development Kit (CDK) project
- *
- * Contact: cdk-devel@lists.sourceforge.net
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public License
- * as published by the Free Software Foundation; either version 2.1
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
- */
 package org.openscience.cdk.tools;
 
 import com.google.common.collect.ImmutableSet;
@@ -31,7 +13,13 @@ import org.openscience.cdk.interfaces.IBond.Order;
 import java.util.*;
 
 /**
- * TODO
+ * Finds and extracts a molecules's functional groups in a purely rule-based manner.
+ *
+ * This class implements Peter Ertl's algorithm for the automated detection and extraction
+ * of functional groups in organic molecules
+ * [Ertl P. An algorithm to identify functional groups in organic molecules. J 233 Cheminform. 2017; 9:36].
+ *
+ * @author Sebastian Fritsch
  */
 public class ErtlFunctionalGroupsFinder {
 	
@@ -59,7 +47,7 @@ public class ErtlFunctionalGroupsFinder {
 		NO_GENERALIZATION;
 	}
 	
-	private static enum EnvironmentCalCType { C_AROMATIC, C_ALIPHATIC };
+	private enum EnvironmentCalCType { C_AROMATIC, C_ALIPHATIC };
 	
 	/**
 	 * Describes one carbon atom in the environment of a marked atom. It can either be aromatic 
@@ -143,11 +131,11 @@ public class ErtlFunctionalGroupsFinder {
 	 * @param clone Use 'false' to reuse the input container's bonds and atoms in the extraction of the functional
 	 *                groups. This may speed up the extraction and lower the memory consumption for processing large
 	 *                amounts of data but corrupts the original input container.
-	 *              Use 'true' to work with a clone and leave the input container intact.
+	 *              Use 'true' to work with a clone and leave the input container intact (default).
      * @return a list with all functional groups found in the molecule.
      */
     public List<IAtomContainer> find(IAtomContainer container, boolean clone){
-    	// work with a clone
+    	// work with a clone?
 		IAtomContainer mol;
 		if(clone){
 			try {
@@ -159,7 +147,6 @@ public class ErtlFunctionalGroupsFinder {
 		else{
 			mol = container;
 		}
-
     	
     	// init GraphUtil & EdgeToBondMap
     	bondMap = EdgeToBondMap.withSpaceFor(mol);
@@ -195,15 +182,7 @@ public class ErtlFunctionalGroupsFinder {
     }
 
     /**
-     * Mark all atoms according to the conditions below and store them in a set for further processing.
-     *
-     * 	1. mark all heteroatoms in a molecule, including halogens
-     * 	2. mark also the following carbon atoms:
-     * 		• atoms connected by non-aromatic double or triple bond to any heteroatom
-     * 		• atoms in nonaromatic carbon–carbon double or triple bonds
-     * 		• acetal carbons, i.e. sp3 carbons connected to two or more oxygens, nitrogens or sulfurs; these O, N or S atoms must have only single bonds
-     *		• all atoms in oxirane, aziridine and thiirane rings (such rings are traditionally considered to be functional groups due to their high reactivity)
-     * TODO: add citation!
+     * Mark all atoms and store them in a set for further processing.
      *
      * @param molecule Molecule with atoms to mark
      */
@@ -287,7 +266,6 @@ public class ErtlFunctionalGroupsFinder {
     						}
     						if(isAllSingleBonds) {
     							oNSCounter++;
-    							// FIXME: getImplicitHydrogenCount can be null / CDKConstants.UNSET for unset Atoms -> check?!
     							if(oNSCounter > 1 && adjList[idx].length + cAtom.getImplicitHydrogenCount() == 4) {
     								// set as marked and break out of connected atoms
     								if(isDbg()) log.debug(String.format("Marking Atom #%d (%s) - Met condition 2.3",
@@ -479,9 +457,8 @@ public class ErtlFunctionalGroupsFinder {
      * meaningful detail and generalization.
      * 
      * @param fGroups the list of functional groups including "environments"
-     * @return a list of the same functional groups with generalized "environments"
      */
-    private List<IAtomContainer> expandGeneralizedEnvironments(List<IAtomContainer> fGroups){
+    private void expandGeneralizedEnvironments(List<IAtomContainer> fGroups){
     	if(isDbg()) log.debug("########## Starting generalization of functional groups... ##########");
     	
     	for(IAtomContainer fGroup : fGroups) {
@@ -550,7 +527,6 @@ public class ErtlFunctionalGroupsFinder {
 					if(atom.getImplicitHydrogenCount() != 0) {
 						atom.setImplicitHydrogenCount(0);
 					}
-					// FIXME this does not account for aromatic heteroatoms that are connected by 2 or more bonds (extremely unlikely if possible at all, but still)
 					int rAtomCount = atom.getValency() - 1;
 					if(isDbg()) log.debug(String.format("   - found connected aromatic heteroatom (%s). Adding %d R-Atoms...", atom.getSymbol(), rAtomCount));
 					addRAtoms(atom, rAtomCount, fGroup);
@@ -581,11 +557,14 @@ public class ErtlFunctionalGroupsFinder {
     	}
     	
     	if(isDbg()) log.debug("########## Generalization of functional groups completed. ##########");
-    
-    	return fGroups;
     }
 
-    private void expandFullEnvironments(List<IAtomContainer> fGroups) {
+	/**
+	 * Expands the full environments of functional groups, converted into atoms and bonds.
+	 *
+	 * @param fGroups the list of functional groups including "environments"
+	 */
+	private void expandFullEnvironments(List<IAtomContainer> fGroups) {
     	if(isDbg()) log.debug("########## Starting expansion of full environments for functional groups... ##########");
     	
     	for(IAtomContainer fGroup : fGroups) {
@@ -611,7 +590,6 @@ public class ErtlFunctionalGroupsFinder {
     }
     
     private void expandEnvironment(IAtom atom, IAtomContainer container) {
-    	
     	List<EnvironmentalC> environment = environmentsMap.get(atom);
     	
     	if(environment == null || environment.isEmpty()) {
@@ -655,7 +633,7 @@ public class ErtlFunctionalGroupsFinder {
     	int rAtomsForCCount = rAtomCount;
     	if(atom.getAtomicNumber() == 8 && atom.getImplicitHydrogenCount() == 1) {
     		addHydrogens(atom, 1, container);
-			atom.setImplicitHydrogenCount(0); //TODO can be removed?
+			atom.setImplicitHydrogenCount(0);
 			if(isDbg()) log.debug("		expanded hydrogen on connected OH-Group");
     	}
     	else if(isHeteroatom(atom)) rAtomCount += atom.getImplicitHydrogenCount();
@@ -745,8 +723,6 @@ public class ErtlFunctionalGroupsFinder {
     		if(group != null)
     			group.addLonePair(lonePair);
         }
-
-        // ignore stereo
     	
     	return groups;
     }
