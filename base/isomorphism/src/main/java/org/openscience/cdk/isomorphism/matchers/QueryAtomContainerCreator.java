@@ -18,100 +18,81 @@
  */
 package org.openscience.cdk.isomorphism.matchers;
 
-import java.util.Iterator;
-
-import org.openscience.cdk.CDKConstants;
-import org.openscience.cdk.interfaces.IAtom;
 import org.openscience.cdk.interfaces.IAtomContainer;
 import org.openscience.cdk.interfaces.IBond;
-import org.openscience.cdk.interfaces.IChemObjectBuilder;
-import org.openscience.cdk.interfaces.IPseudoAtom;
+
+import java.util.Iterator;
 
 /**
- *@cdk.module   isomorphism
- * @cdk.githash
+ * Utilities for creating queries from 'real' molecules. Note that most of this
+ * functionality has now been replaced by the
+ * {@link QueryAtomContainer#create(IAtomContainer, Expr.Type...)} method and
+ * the documentation simply indicates what settings are used.
  */
 public class QueryAtomContainerCreator {
 
     /**
-     * Creates a QueryAtomContainer with SymbolQueryAtom's, AromaticQueryBond's and
-     * OrderQueryBond's. If a IBond of the input <code>container</code> is flagged
-     * aromatic, then it disregards bond order information and only match against
-     * an aromatic target atom instead.
+     * Creates a QueryAtomContainer with the following settings:
      *
-     *@param  container  The AtomContainer that stands as model
-     *@return            The new QueryAtomContainer created from container.
+     * <pre>
+     * QueryAtomContainer.create(container,
+     *                           Expr.Type.ALIPHATIC_ELEMENT,
+     *                           Expr.Type.AROMATIC_ELEMENT,
+     *                           Expr.Type.IS_AROMATIC,
+     *                           Expr.Type.ALIPHATIC_ORDER,
+     *                           Expr.Type.STEREOCHEMISTRY);
+     * </pre>
+     *
+     * @param container The AtomContainer that stands as model
+     * @return The new QueryAtomContainer created from container.
      */
     public static QueryAtomContainer createBasicQueryContainer(IAtomContainer container) {
-        QueryAtomContainer queryContainer = new QueryAtomContainer(container.getBuilder());
-        for (int i = 0; i < container.getAtomCount(); i++) {
-            queryContainer.addAtom(new SymbolQueryAtom(container.getAtom(i)));
-        }
-        Iterator<IBond> bonds = container.bonds().iterator();
-        while (bonds.hasNext()) {
-            IBond bond = bonds.next();
-            int index1 = container.indexOf(bond.getBegin());
-            int index2 = container.indexOf(bond.getEnd());
-            if (bond.getFlag(CDKConstants.ISAROMATIC)) {
-                queryContainer.addBond(new AromaticQueryBond((IQueryAtom) queryContainer.getAtom(index1),
-                        (IQueryAtom) queryContainer.getAtom(index2), container.getBuilder()));
-            } else {
-                queryContainer.addBond(new OrderQueryBond((IQueryAtom) queryContainer.getAtom(index1),
-                        (IQueryAtom) queryContainer.getAtom(index2), bond.getOrder(), container.getBuilder()));
-            }
-        }
-        return queryContainer;
+        return QueryAtomContainer.create(container,
+                                         Expr.Type.ALIPHATIC_ELEMENT,
+                                         Expr.Type.AROMATIC_ELEMENT,
+                                         Expr.Type.IS_AROMATIC,
+                                         Expr.Type.ALIPHATIC_ORDER,
+                                         Expr.Type.STEREOCHEMISTRY);
     }
 
     /**
-     * Creates a QueryAtomContainer with SymbolQueryAtom's and OrderQueryBond's. Unlike
-     * <code>createBasicQueryContainer</code>, it disregards aromaticity flags.
+     * Creates a QueryAtomContainer with the following settings:
      *
-     * @param  container  The AtomContainer that stands as model
-     * @return            The new QueryAtomContainer created from container.
+     * <pre>
+     * QueryAtomContainer.create(container,
+     *                           Expr.Type.ELEMENT,
+     *                           Expr.Type.ORDER);
+     * </pre>
+     *
+     * @param container The AtomContainer that stands as model
+     * @return The new QueryAtomContainer created from container.
      */
     public static QueryAtomContainer createSymbolAndBondOrderQueryContainer(IAtomContainer container) {
-        QueryAtomContainer queryContainer = new QueryAtomContainer(container.getBuilder());
-        for (int i = 0; i < container.getAtomCount(); i++) {
-            queryContainer.addAtom(new SymbolQueryAtom(container.getAtom(i)));
-        }
-        Iterator<IBond> bonds = container.bonds().iterator();
-        while (bonds.hasNext()) {
-            IBond bond = (IBond) bonds.next();
-            int index1 = container.indexOf(bond.getBegin());
-            int index2 = container.indexOf(bond.getEnd());
-            queryContainer.addBond(new OrderQueryBondOrderOnly((IQueryAtom) queryContainer.getAtom(index1),
-                    (IQueryAtom) queryContainer.getAtom(index2), bond.getOrder(), container.getBuilder()));
-        }
-        return queryContainer;
+        return QueryAtomContainer.create(container,
+                                         Expr.Type.ELEMENT,
+                                         Expr.Type.ORDER);
     }
 
     /**
-     *  Creates a QueryAtomContainer with SymbolAncChargeQueryAtom's and
-     *  OrderQueryBond's.
+     * Creates a QueryAtomContainer with the following settings:
      *
-     *@param  container  The AtomContainer that stands as model
-     *@return            The new QueryAtomContainer created from container.
+     * <pre>
+     * QueryAtomContainer.create(container,
+     *                           Expr.Type.ELEMENT,
+     *                           Expr.Type.FORMAL_CHARGE,
+     *                           Expr.Type.IS_AROMATIC,
+     *                           Expr.Type.ORDER);
+     * </pre>
+     *
+     * @param container The AtomContainer that stands as model
+     * @return The new QueryAtomContainer created from container.
      */
     public static QueryAtomContainer createSymbolAndChargeQueryContainer(IAtomContainer container) {
-        QueryAtomContainer queryContainer = new QueryAtomContainer(container.getBuilder());
-        for (int i = 0; i < container.getAtomCount(); i++) {
-            queryContainer.addAtom(new SymbolAndChargeQueryAtom(container.getAtom(i)));
-        }
-        Iterator<IBond> bonds = container.bonds().iterator();
-        while (bonds.hasNext()) {
-            IBond bond = bonds.next();
-            int index1 = container.indexOf(bond.getBegin());
-            int index2 = container.indexOf(bond.getEnd());
-            if (bond.getFlag(CDKConstants.ISAROMATIC)) {
-                queryContainer.addBond(new AromaticQueryBond((IQueryAtom) queryContainer.getAtom(index1),
-                        (IQueryAtom) queryContainer.getAtom(index2), container.getBuilder()));
-            } else {
-                queryContainer.addBond(new OrderQueryBond((IQueryAtom) queryContainer.getAtom(index1),
-                        (IQueryAtom) queryContainer.getAtom(index2), bond.getOrder(), container.getBuilder()));
-            }
-        }
-        return queryContainer;
+        return QueryAtomContainer.create(container,
+                                         Expr.Type.ELEMENT,
+                                         Expr.Type.FORMAL_CHARGE,
+                                         Expr.Type.IS_AROMATIC,
+                                         Expr.Type.ORDER);
     }
 
     public static QueryAtomContainer createSymbolChargeIDQueryContainer(IAtomContainer container) {
@@ -124,171 +105,89 @@ public class QueryAtomContainerCreator {
             IBond bond = bonds.next();
             int index1 = container.indexOf(bond.getBegin());
             int index2 = container.indexOf(bond.getEnd());
-            if (bond.getFlag(CDKConstants.ISAROMATIC)) {
-                queryContainer.addBond(new AromaticQueryBond((IQueryAtom) queryContainer.getAtom(index1),
-                        (IQueryAtom) queryContainer.getAtom(index2), container.getBuilder()));
+            if (bond.isAromatic()) {
+                QueryBond qbond = new QueryBond(queryContainer.getAtom(index1),
+                                                queryContainer.getAtom(index2),
+                                                Expr.Type.IS_AROMATIC);
+                queryContainer.addBond(qbond);
             } else {
-                queryContainer.addBond(new OrderQueryBond((IQueryAtom) queryContainer.getAtom(index1),
-                        (IQueryAtom) queryContainer.getAtom(index2), bond.getOrder(), container.getBuilder()));
+                QueryBond qbond = new QueryBond(queryContainer.getAtom(index1),
+                                                queryContainer.getAtom(index2),
+                                                Expr.Type.ORDER,
+                                                bond.getOrder().numeric());
+                qbond.setOrder(bond.getOrder()); // backwards compatibility
+                queryContainer.addBond(qbond);
             }
         }
         return queryContainer;
     }
 
     /**
-     *  Creates a QueryAtomContainer with AnyAtoms / Aromatic Atoms and OrderQueryBonds / AromaticQueryBonds.
-     *  It uses the CDKConstants.ISAROMATIC flag to determine the aromaticity of container.
+     * Creates a QueryAtomContainer with the following settings:
      *
-     *@param  container    The AtomContainer that stands as model
-     *@param  aromaticity  True = use aromaticity flags to create AtomaticAtoms and AromaticQueryBonds
-     *@return              The new QueryAtomContainer created from container
+     * <pre>
+     * // aromaticity = true
+     * QueryAtomContainer.create(container,
+     *                           Expr.Type.IS_AROMATIC,
+     *                           Expr.Type.ALIPHATIC_ORDER);
+     * // aromaticity = false
+     * QueryAtomContainer.create(container,
+     *                           Expr.Type.ORDER);
+     * </pre>
+     *
+     * @param container The AtomContainer that stands as model
+     * @param aromaticity option flag
+     * @return The new QueryAtomContainer created from container.
      */
     public static QueryAtomContainer createAnyAtomContainer(IAtomContainer container, boolean aromaticity) {
-        QueryAtomContainer queryContainer = new QueryAtomContainer(container.getBuilder());
-
-        for (int i = 0; i < container.getAtomCount(); i++) {
-            if (aromaticity && container.getAtom(i).getFlag(CDKConstants.ISAROMATIC)) {
-                queryContainer.addAtom(new AromaticAtom(container.getBuilder()));
-            } else {
-                queryContainer.addAtom(new AnyAtom(container.getBuilder()));
-            }
-        }
-
-        Iterator<IBond> bonds = container.bonds().iterator();
-        while (bonds.hasNext()) {
-            IBond bond = bonds.next();
-            int index1 = container.indexOf(bond.getBegin());
-            int index2 = container.indexOf(bond.getEnd());
-            if (aromaticity && bond.getFlag(CDKConstants.ISAROMATIC)) {
-                queryContainer.addBond(new AromaticQueryBond((IQueryAtom) queryContainer.getAtom(index1),
-                        (IQueryAtom) queryContainer.getAtom(index2), container.getBuilder()));
-            } else {
-                queryContainer.addBond(new OrderQueryBond((IQueryAtom) queryContainer.getAtom(index1),
-                        (IQueryAtom) queryContainer.getAtom(index2), bond.getOrder(), container.getBuilder()));
-            }
-        }
-        return queryContainer;
+        if (aromaticity)
+            return QueryAtomContainer.create(container,
+                                             Expr.Type.IS_AROMATIC,
+                                             Expr.Type.ALIPHATIC_ORDER);
+        else
+            return QueryAtomContainer.create(container,
+                                             Expr.Type.ORDER);
     }
 
     /**
-     * Creates a QueryAtomContainer with wildcard atoms and wildcard bonds.
-     * 
-     * This method thus allows the user to search based only on connectivity.
+     * Creates a QueryAtomContainer with the following settings:
      *
-     * @param container   The AtomContainer that stands as the model
-     * @param aromaticity If True, aromaticity flags are checked to create AromaticAtoms
-     *                    and AromaticQueryBonds
-     * @return The new QueryAtomContainer
+     * <pre>
+     * // aromaticity = true
+     * QueryAtomContainer.create(container,
+     *                           Expr.Type.IS_AROMATIC);
+     * // aromaticity = false
+     * QueryAtomContainer.create(container);
+     * </pre>
+     *
+     * @param container The AtomContainer that stands as model
+     * @param aromaticity option flag
+     * @return The new QueryAtomContainer created from container.
      */
     public static QueryAtomContainer createAnyAtomAnyBondContainer(IAtomContainer container, boolean aromaticity) {
-        QueryAtomContainer queryContainer = new QueryAtomContainer(container.getBuilder());
-
-        for (int i = 0; i < container.getAtomCount(); i++) {
-            if (aromaticity && container.getAtom(i).getFlag(CDKConstants.ISAROMATIC)) {
-                queryContainer.addAtom(new AromaticAtom(container.getBuilder()));
-            } else {
-                queryContainer.addAtom(new AnyAtom(container.getBuilder()));
-            }
-        }
-
-        Iterator<IBond> bonds = container.bonds().iterator();
-        while (bonds.hasNext()) {
-            IBond bond = bonds.next();
-            int index1 = container.indexOf(bond.getBegin());
-            int index2 = container.indexOf(bond.getEnd());
-            queryContainer.addBond(new AnyOrderBond(queryContainer.getAtom(index1), queryContainer.getAtom(index2),
-                    container.getBuilder()));
-        }
-        return queryContainer;
+        if (aromaticity)
+            return QueryAtomContainer.create(container, Expr.Type.IS_AROMATIC);
+        else
+            return QueryAtomContainer.create(container);
     }
 
     /**
-     *  Creates a QueryAtomContainer with SymbolQueryAtom's and
-     *  OrderQueryBond's. Each PseudoAtom will be replaced by a
-     *  AnyAtom
+     * Creates a QueryAtomContainer with the following settings:
      *
-     *@param  container  The AtomContainer that stands as model
-     *@return            The new QueryAtomContainer created from container.
+     * <pre>
+     * QueryAtomContainer.create(container,
+     *                           Expr.Type.ELEMENT,
+     *                           Expr.Type.IS_AROMATIC,
+     *                           Expr.Type.ALIPHATIC_ORDER);
+     * </pre>
+     *
+     * @param container The AtomContainer that stands as model
+     * @return The new QueryAtomContainer created from container.
      */
     public static QueryAtomContainer createAnyAtomForPseudoAtomQueryContainer(IAtomContainer container) {
-        QueryAtomContainer queryContainer = new QueryAtomContainer(container.getBuilder());
-        for (int i = 0; i < container.getAtomCount(); i++) {
-            if (container.getAtom(i) instanceof IPseudoAtom) {
-                queryContainer.addAtom(new AnyAtom(container.getBuilder()));
-            } else {
-                queryContainer.addAtom(new SymbolQueryAtom(container.getAtom(i)));
-            }
-
-        }
-        Iterator<IBond> bonds = container.bonds().iterator();
-        while (bonds.hasNext()) {
-            IBond bond = bonds.next();
-            int index1 = container.indexOf(bond.getBegin());
-            int index2 = container.indexOf(bond.getEnd());
-            if (bond.getFlag(CDKConstants.ISAROMATIC)) {
-                queryContainer.addBond(new AromaticQueryBond((IQueryAtom) queryContainer.getAtom(index1),
-                        (IQueryAtom) queryContainer.getAtom(index2), container.getBuilder()));
-            } else {
-                queryContainer.addBond(new OrderQueryBond((IQueryAtom) queryContainer.getAtom(index1),
-                        (IQueryAtom) queryContainer.getAtom(index2), bond.getOrder(), container.getBuilder()));
-            }
-        }
-        return queryContainer;
-    }
-
-    /** Match any atom. */
-    private static final class AnyAtom extends QueryAtom {
-
-        private AnyAtom(IChemObjectBuilder builder) {
-            super(builder);
-        }
-
-        /**{@inheritDoc} */
-        @Override
-        public boolean matches(IAtom atom) {
-            return true;
-        }
-    }
-
-    /** Match any aromatic atom. */
-    private static final class AromaticAtom extends QueryAtom {
-
-        private AromaticAtom(IChemObjectBuilder builder) {
-            super(builder);
-        }
-
-        /**{@inheritDoc} */
-        @Override
-        public boolean matches(IAtom atom) {
-            return atom.getFlag(CDKConstants.ISAROMATIC);
-        }
-    }
-
-    /** Match any bond which doesn't have a null or unset bond order. */
-    private static final class AnyOrderBond extends QueryBond {
-
-        private AnyOrderBond(IAtom either, IAtom other, IChemObjectBuilder builder) {
-            super(either, other, Order.UNSET, builder);
-        }
-
-        /**{@inheritDoc} */
-        @Override
-        public boolean matches(IBond bond) {
-            return bond != null && bond.getOrder() != Order.UNSET;
-        }
-    }
-
-    /** Match any aromatic bond. */
-    private static final class AromaticQueryBond extends QueryBond {
-
-        private AromaticQueryBond(IAtom either, IAtom other, IChemObjectBuilder builder) {
-            super(either, other, Order.UNSET, builder);
-        }
-
-        /**{@inheritDoc} */
-        @Override
-        public boolean matches(IBond bond) {
-            return bond.getFlag(CDKConstants.ISAROMATIC);
-        }
+        return QueryAtomContainer.create(container,
+                                         Expr.Type.ELEMENT,
+                                         Expr.Type.IS_AROMATIC,
+                                         Expr.Type.ALIPHATIC_ORDER);
     }
 }
