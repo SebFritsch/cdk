@@ -16,48 +16,23 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
  */
-
-
 package org.openscience.cdk.tools;
-
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Queue;
-import java.util.Set;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
-import org.openscience.cdk.Atom;
-import org.openscience.cdk.AtomContainer;
-import org.openscience.cdk.CDKConstants;
-import org.openscience.cdk.PseudoAtom;
-import org.openscience.cdk.graph.ConnectedComponents;
-import org.openscience.cdk.graph.ConnectivityChecker;
-import org.openscience.cdk.graph.GraphUtil;
-import org.openscience.cdk.graph.GraphUtil.EdgeToBondMap;
-import org.openscience.cdk.interfaces.IAtom;
-import org.openscience.cdk.interfaces.IAtomContainer;
-import org.openscience.cdk.interfaces.IAtomContainerSet;
-import org.openscience.cdk.interfaces.IBond;
-import org.openscience.cdk.interfaces.IChemObject;
-import org.openscience.cdk.interfaces.ILonePair;
-import org.openscience.cdk.interfaces.IBond.Order;
-import org.openscience.cdk.interfaces.IPseudoAtom;
-import org.openscience.cdk.interfaces.ISingleElectron;
-import org.openscience.cdk.interfaces.IStereoElement;
-import org.openscience.cdk.tools.manipulator.AtomContainerManipulator;
-
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-import com.google.common.primitives.Ints;
+import org.openscience.cdk.graph.ConnectedComponents;
+import org.openscience.cdk.graph.GraphUtil;
+import org.openscience.cdk.graph.GraphUtil.EdgeToBondMap;
+import org.openscience.cdk.interfaces.*;
+import org.openscience.cdk.interfaces.IBond.Order;
 
+import java.util.*;
+
+/**
+ * TODO
+ */
 public class ErtlFunctionalGroupsFinder {
 	
 	private static ILoggingTool log = LoggingToolFactory.createLoggingTool(ErtlFunctionalGroupsFinder.class);
@@ -124,9 +99,7 @@ public class ErtlFunctionalGroupsFinder {
     		
     		return bond;
 		}
-	}	
-	
-	
+	}
     
     /**
      * Default constructor for ErtlFunctionalGroupsFinder.
@@ -205,8 +178,7 @@ public class ErtlFunctionalGroupsFinder {
 			expandGeneralizedEnvironments(groups);
     	}
     	else if (mode == Mode.NO_GENERALIZATION) {
-    		//TODO groups = ...
-			throw new UnsupportedOperationException();
+			expandFullEnvironments(groups);
     	}
     	else {
     		throw new IllegalStateException("Unknown mode.");
