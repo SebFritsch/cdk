@@ -9,6 +9,8 @@ import org.openscience.cdk.graph.GraphUtil;
 import org.openscience.cdk.graph.GraphUtil.EdgeToBondMap;
 import org.openscience.cdk.interfaces.*;
 import org.openscience.cdk.interfaces.IBond.Order;
+import org.openscience.cdk.tools.LoggingToolFactory;
+import org.openscience.cdk.tools.ILoggingTool;
 
 import java.util.*;
 
