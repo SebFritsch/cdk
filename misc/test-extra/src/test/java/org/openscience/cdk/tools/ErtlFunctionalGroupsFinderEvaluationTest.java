@@ -94,7 +94,7 @@ public class ErtlFunctionalGroupsFinderEvaluationTest extends CDKTestCase {
     /**
      * Path to ChEBI 3 star database SD file, ending with file name
      */
-    private static final String CHEBI_3STAR_SD_FILE_PATH = "C:\\Users\\Bachelor\\Jonas\\ChEBI_lite_3star.sdf";
+    private static final String CHEBI_3STAR_SD_FILE_PATH = "C:\\Users\\Bachelor\\Jonas\\ChEBI_lite_3star_subset.sdf";
     
     /**
      * Path to ChEMBL database SD file, ending with file name
@@ -104,7 +104,7 @@ public class ErtlFunctionalGroupsFinderEvaluationTest extends CDKTestCase {
     /**
      * Directory for output files; Will be created as sub-folder in the working directory (the directory of the read SD file)
      */
-    private static final String OUTPUT_FOLDER_FROM_WORKING_DIRECTORY = "Ertl_fg_finder_test";
+    private static final String OUTPUT_FOLDER_FROM_WORKING_DIRECTORY = "ErtlFunctionalGroupsFinderEvaluationTest_Output";
     
     /**
      * Format of the time stamp addition to all written output files
