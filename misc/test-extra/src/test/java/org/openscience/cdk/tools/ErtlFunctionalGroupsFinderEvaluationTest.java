@@ -35,7 +35,6 @@ import java.util.List;
 import java.util.Set;
 import org.junit.Assert;
 import org.junit.Assume;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.openscience.cdk.Atom;
 import org.openscience.cdk.CDKConstants;
@@ -72,12 +71,12 @@ import org.openscience.cdk.tools.manipulator.AtomTypeManipulator;
  * the ErtlFunctionalGroupsFinder with different settings (i.e. electron donation model and cycle finder algorithm), and write 
  * the functional groups with their associated frequency under the given settings in this SD file to a CSV file.
  * <p>
- * To run correctly the constants CHEBI_SD_FILE_PATH, CHEBI_3STAR_SD_FILE_PATH and CHEMBL_SD_FILE_PATH must be set to where 
- * to find the specific files on the local system.
+ * To run correctly the constant SD_FILE_PATH must be set to where to find the specific file on the local system.
  * <p>
  * All written files will be placed in a new folder in the same directory as the read SD file.
  * <p>
- * Note: Only one SD file should be analyzed per test method (since some mechanisms work under that assumption).
+ * Note for addition of new tests: Only one SD file should be analyzed per test method (since some mechanisms work under 
+ * that assumption).
  * 
  * @author Jonas Schaub
  */
@@ -87,19 +86,9 @@ public class ErtlFunctionalGroupsFinderEvaluationTest extends CDKTestCase {
     
     //<editor-fold defaultstate="collapsed" desc="Paths, directories and files">
     /**
-     * Path to ChEBI database SD file, ending with file name
+     * Path to SD file that should be analyzed
      */
-    private static final String CHEBI_SD_FILE_PATH = "C:\\Users\\Bachelor\\Jonas\\ChEBI_lite.sdf";
-    
-    /**
-     * Path to ChEBI 3 star database SD file, ending with file name
-     */
-    private static final String CHEBI_3STAR_SD_FILE_PATH = "C:\\Users\\Bachelor\\Jonas\\ChEBI_lite_3star_subset.sdf";
-    
-    /**
-     * Path to ChEMBL database SD file, ending with file name
-     */
-    private static final String CHEMBL_SD_FILE_PATH = "C:\\Users\\Bachelor\\Jonas\\chembl_24.sdf";
+    private static final String SD_FILE_PATH = "C:\\Users\\Bachelor\\Jonas\\ChEBI_lite_3star_subset.sdf";
     
     /**
      * Directory for output files; Will be created as sub-folder in the working directory (the directory of the read SD file)
@@ -118,34 +107,14 @@ public class ErtlFunctionalGroupsFinderEvaluationTest extends CDKTestCase {
     
     //<editor-fold defaultstate="collapsed" desc="Test identifiers">
     /**
-     * Identifier string for ChEBI test
+     * Identifier string for SD file electron donation test that counts multiples
      */
-    private static final String CHEBI_TEST_IDENTIFIER = "ChEBI";
+    private static final String ELECTRON_DONATION_TEST_IDENTIFIER = "ElectronDonationTest";
     
     /**
-     * Identifier string for ChEBI 3 star test
+     * Identifier string for SD file electron donation test that does not count multiples per molecule
      */
-    private static final String CHEBI_3STAR_TEST_IDENTIFIER = "ChEBI3Star";
-    
-    /**
-     * Identifier string for ChEBI test without counting multiples per molecule
-     */
-    private static final String CHEBI_NO_MULTIPLES_TEST_IDENTIFIER = "ChEBINoMultiples";
-    
-    /**
-     * Identifier string for ChEBI 3 star test without counting multiples per molecule
-     */
-    private static final String CHEBI_3STAR_NO_MULTIPLES_TEST_IDENTIFIER = "ChEBI3StarNoMultiples";
-    
-    /**
-     * Identifier string for ChEMBL test
-     */
-    private static final String CHEMBL_TEST_IDENTIFIER = "ChEMBL";
-    
-    /**
-     * Identifier string for ChEMBL test without counting multiples per molecule
-     */
-    private static final String CHEMBL_NO_MULTIPLES_TEST_IDENTIFIER = "ChEMBLNoMultiples";
+    private static final String ELECTRON_DONATION_NO_MULTIPLES_TEST_IDENTIFIER = "ElectrondDonationNoMultiplesTest";
     
     /**
      * Identifier string for test of different CycleFinder settings
@@ -372,10 +341,10 @@ public class ErtlFunctionalGroupsFinderEvaluationTest extends CDKTestCase {
     private static final int SMILES_GENERATOR_OUTPUT_MODE = SmiFlavor.Unique;
     
     /**
-     * Initial capacity of the master HashMap (where all data is written to); May be adjusted when analyzing larger or 
-     * smaller SD files (currently set to the expected number of different functional groups in ChEMBL)
+     * Initial capacity of the master HashMap (where all data is written to); May be adjusted when analyzing larger 
+     * SD files
      */
-    private static final int MASTER_HASHMAP_INITIAL_CAPACITY = 50000;
+    private static final int MASTER_HASHMAP_INITIAL_CAPACITY = 1000;
     
     /**
      * Initial capacity of the master HashMap's inner maps that store the frequencies for different settings for a 
@@ -505,391 +474,59 @@ public class ErtlFunctionalGroupsFinderEvaluationTest extends CDKTestCase {
     
     //<editor-fold defaultstate="collapsed" desc="Tests involving databases">
     /**
-     * Test for analyzing ChEBI database for all four different electron donation models supplied by the cdk: daylight, cdk,
-     * piBonds, cdkAllowingExocyclic and the aromaticity model cdkLegacy.
+     * Test for analyzing molecules in an SD file for all four different electron donation models supplied by the cdk: 
+     * daylight, cdk, piBonds, cdkAllowingExocyclic and the aromaticity model cdkLegacy.
      * <p>
      * (Functional groups occurring multiple times in the same molecule are counted multiple times)
      *
      * @throws java.lang.Exception if initializeWithFileOperations() throws an exception or an unexpected exception occurs
      */
     @Test
-    public void analyzeChebi() throws Exception {
-        this.initializeWithFileOperations(ErtlFunctionalGroupsFinderEvaluationTest.CHEBI_SD_FILE_PATH, 
-                ErtlFunctionalGroupsFinderEvaluationTest.CHEBI_TEST_IDENTIFIER);
-        Assume.assumeTrue(this.isTestAbleToRun);
-        
-        System.out.println("\nLoading file with path: " + ErtlFunctionalGroupsFinderEvaluationTest.CHEBI_SD_FILE_PATH);
-        File tmpChebiSDFile = new File(ErtlFunctionalGroupsFinderEvaluationTest.CHEBI_SD_FILE_PATH);
-        int tmpRequiredNumberOfReaders = 5;
-        IteratingSDFReader[] tmpReaders = new IteratingSDFReader[tmpRequiredNumberOfReaders];
-        try {
-            for (int i = 0; i < tmpRequiredNumberOfReaders; i++) {
-                IteratingSDFReader tmpChebiReader = new IteratingSDFReader(new FileInputStream(tmpChebiSDFile),
-                        DefaultChemObjectBuilder.getInstance(), true);
-                tmpReaders[i] = tmpChebiReader;
-            }
-        } catch (FileNotFoundException aFileNotFoundException) {
-            System.out.println("\nSD file could not be found. Test is ignored.");
-            Assume.assumeTrue(false);
-            return;
-        }
-        //If the 'all' CycleFinder produces an Intractable exception the 'vertexShort' CycleFinder is used
-        CycleFinder tmpCycleFinder = Cycles.or(Cycles.all(), Cycles.vertexShort());
-        
-        Aromaticity tmpDaylightModel = new Aromaticity(ElectronDonation.daylight(), tmpCycleFinder);
-        Aromaticity tmpCdkModel = new Aromaticity(ElectronDonation.cdk(), tmpCycleFinder);
-        Aromaticity tmpPiBondsModel = new Aromaticity(ElectronDonation.piBonds(), tmpCycleFinder);
-        Aromaticity tmpCdkAllowingExocyclicModel = new Aromaticity(ElectronDonation.cdkAllowingExocyclic(), tmpCycleFinder);
-        Aromaticity tmpCDKLegacyModel = Aromaticity.cdkLegacy();
-        
-        boolean tmpAreMultiplesCounted = true;
-        
-        this.calculateAbsoluteFGFrequencies(tmpReaders[0], 
-                ErtlFunctionalGroupsFinderEvaluationTest.DAYLIGHT_MODEL_SETTINGS_KEY, tmpDaylightModel, tmpAreMultiplesCounted);
-        this.calculateAbsoluteFGFrequencies(tmpReaders[1], 
-                ErtlFunctionalGroupsFinderEvaluationTest.CDK_MODEL_SETTINGS_KEY, tmpCdkModel, tmpAreMultiplesCounted);
-        this.calculateAbsoluteFGFrequencies(tmpReaders[2], 
-                ErtlFunctionalGroupsFinderEvaluationTest.PIBONDS_MODEL_SETTINGS_KEY, tmpPiBondsModel, tmpAreMultiplesCounted);
-        this.calculateAbsoluteFGFrequencies(tmpReaders[3], 
-                ErtlFunctionalGroupsFinderEvaluationTest.CDK_EXOCYCLIC_MODEL_SETTINGS_KEY, tmpCdkAllowingExocyclicModel, tmpAreMultiplesCounted);
-        this.calculateAbsoluteFGFrequencies(tmpReaders[4], 
-                ErtlFunctionalGroupsFinderEvaluationTest.CDK_LEGACY_MODEL_SETTINGS_KEY, tmpCDKLegacyModel, tmpAreMultiplesCounted);
-        
-        System.out.println("\nAll analyses are done!");
-        for (IteratingSDFReader tmpReader : tmpReaders) {
-            tmpReader.close();
-        }
-        this.saveData();
-        System.out.println("\nFinished!");
-        System.out.println("\nNumber of occured exceptions: " + this.exceptionsCounter);
+    public void testElectronDonationDependency() throws Exception {
+        this.analyzeElectronDonationDependency(ErtlFunctionalGroupsFinderEvaluationTest.SD_FILE_PATH, 
+                ErtlFunctionalGroupsFinderEvaluationTest.ELECTRON_DONATION_TEST_IDENTIFIER, 
+                true);
     }
     
     /**
-     * Test for analyzing ChEBI database for all four different electron donation models supplied by the cdk: daylight, cdk,
-     * piBonds, cdkAllowingExocyclic and the aromaticity model cdkLegacy.
+     * Test for analyzing molecules in an SD file for all four different electron donation models supplied by the cdk: 
+     * daylight, cdk, piBonds, cdkAllowingExocyclic and the aromaticity model cdkLegacy.
      * <p>
-     * Difference to analyzeChebi(): If the same functional group occurs multiple times in the same molecule
+     * Difference to testElectronDonationDependency(): If the same functional group occurs multiple times in the same molecule
      * it is counted only once
      *
      * @throws java.lang.Exception if initializeWithFileOperations() throws an exception or an unexpected exception occurs
      */
     @Test
-    public void analyzeChebiNoMultiples() throws Exception {
-        this.initializeWithFileOperations(ErtlFunctionalGroupsFinderEvaluationTest.CHEBI_SD_FILE_PATH, 
-                ErtlFunctionalGroupsFinderEvaluationTest.CHEBI_NO_MULTIPLES_TEST_IDENTIFIER);
-        Assume.assumeTrue(this.isTestAbleToRun);
-        
-        System.out.println("\nLoading file with path: " + ErtlFunctionalGroupsFinderEvaluationTest.CHEBI_SD_FILE_PATH);
-        File tmpChebiSDFile = new File(ErtlFunctionalGroupsFinderEvaluationTest.CHEBI_SD_FILE_PATH);
-        int tmpRequiredNumberOfReaders = 5;
-        IteratingSDFReader[] tmpReaders = new IteratingSDFReader[tmpRequiredNumberOfReaders];
-        try {
-            for (int i = 0; i < tmpRequiredNumberOfReaders; i++) {
-                IteratingSDFReader tmpChebiReader = new IteratingSDFReader(new FileInputStream(tmpChebiSDFile),
-                        DefaultChemObjectBuilder.getInstance(), true);
-                tmpReaders[i] = tmpChebiReader;
-            }
-        } catch (FileNotFoundException aFileNotFoundException) {
-            System.out.println("\nSD file could not be found. Test is ignored.");
-            Assume.assumeTrue(false);
-            return;
-        }
-        //If the 'all' CycleFinder produces an Intractable exception the 'vertexShort' CycleFinder is used
-        CycleFinder tmpCycleFinder = Cycles.or(Cycles.all(), Cycles.vertexShort());
-        
-        Aromaticity tmpDaylightModel = new Aromaticity(ElectronDonation.daylight(), tmpCycleFinder);
-        Aromaticity tmpCdkModel = new Aromaticity(ElectronDonation.cdk(), tmpCycleFinder);
-        Aromaticity tmpPiBondsModel = new Aromaticity(ElectronDonation.piBonds(), tmpCycleFinder);
-        Aromaticity tmpCdkAllowingExocyclicModel = new Aromaticity(ElectronDonation.cdkAllowingExocyclic(), tmpCycleFinder);
-        Aromaticity tmpCDKLegacyModel = Aromaticity.cdkLegacy();
-        
-        boolean tmpAreMultiplesCounted = false;
-        
-        this.calculateAbsoluteFGFrequencies(tmpReaders[0], 
-                ErtlFunctionalGroupsFinderEvaluationTest.DAYLIGHT_MODEL_SETTINGS_KEY, tmpDaylightModel, tmpAreMultiplesCounted);
-        this.calculateAbsoluteFGFrequencies(tmpReaders[1], 
-                ErtlFunctionalGroupsFinderEvaluationTest.CDK_MODEL_SETTINGS_KEY, tmpCdkModel, tmpAreMultiplesCounted);
-        this.calculateAbsoluteFGFrequencies(tmpReaders[2], 
-                ErtlFunctionalGroupsFinderEvaluationTest.PIBONDS_MODEL_SETTINGS_KEY, tmpPiBondsModel, tmpAreMultiplesCounted);
-        this.calculateAbsoluteFGFrequencies(tmpReaders[3], 
-                ErtlFunctionalGroupsFinderEvaluationTest.CDK_EXOCYCLIC_MODEL_SETTINGS_KEY, tmpCdkAllowingExocyclicModel, tmpAreMultiplesCounted);
-        this.calculateAbsoluteFGFrequencies(tmpReaders[4], 
-                ErtlFunctionalGroupsFinderEvaluationTest.CDK_LEGACY_MODEL_SETTINGS_KEY, tmpCDKLegacyModel, tmpAreMultiplesCounted);
-        
-        System.out.println("\nAll analyses are done!");
-        for (IteratingSDFReader tmpReader : tmpReaders) {
-            tmpReader.close();
-        }
-        this.saveData();
-        System.out.println("\nFinished!");
-        System.out.println("\nNumber of occured exceptions: " + this.exceptionsCounter);
+    public void testElectronDonationDependencyNoMultiples() throws Exception {
+        this.analyzeElectronDonationDependency(ErtlFunctionalGroupsFinderEvaluationTest.SD_FILE_PATH, 
+                ErtlFunctionalGroupsFinderEvaluationTest.ELECTRON_DONATION_NO_MULTIPLES_TEST_IDENTIFIER, 
+                false);
     }
     
     /**
-     * Test for analyzing ChEBI 3 star database for all four different electron donation models supplied by the cdk: daylight, cdk,
-     * piBonds, cdkAllowingExocyclic and the aromaticity model cdkLegacy.
+     * Test for analyzing molecules in an SD file for six different CycleFinder settings supplied by the cdk: all(), 
+     * vertexShort(), relevant(), essential(), tripleShort() and cdkAromaticSet().
      * <p>
      * (Functional groups occurring multiple times in the same molecule are counted multiple times)
      *
      * @throws java.lang.Exception if initializeWithFileOperations() throws an exception or an unexpected exception occurs
      */
     @Test
-    public void analyzeChebi3Star() throws Exception {
-        this.initializeWithFileOperations(ErtlFunctionalGroupsFinderEvaluationTest.CHEBI_3STAR_SD_FILE_PATH, 
-                ErtlFunctionalGroupsFinderEvaluationTest.CHEBI_3STAR_TEST_IDENTIFIER);
-        Assume.assumeTrue(this.isTestAbleToRun);
-        
-        System.out.println("\nLoading file with path: " + ErtlFunctionalGroupsFinderEvaluationTest.CHEBI_3STAR_SD_FILE_PATH);
-        File tmpChebiSDFile = new File(ErtlFunctionalGroupsFinderEvaluationTest.CHEBI_3STAR_SD_FILE_PATH);
-        int tmpRequiredNumberOfReaders = 5;
-        IteratingSDFReader[] tmpReaders = new IteratingSDFReader[tmpRequiredNumberOfReaders];
-        try {
-            for (int i = 0; i < tmpRequiredNumberOfReaders; i++) {
-                IteratingSDFReader tmpChebiReader = new IteratingSDFReader(new FileInputStream(tmpChebiSDFile),
-                        DefaultChemObjectBuilder.getInstance(), true);
-                tmpReaders[i] = tmpChebiReader;
-            }
-        } catch (FileNotFoundException aFileNotFoundException) {
-            System.out.println("\nSD file could not be found. Test is ignored.");
-            Assume.assumeTrue(false);
-            return;
-        }
-        //If the 'all' CycleFinder produces an Intractable exception the 'vertexShort' CycleFinder is used
-        CycleFinder tmpCycleFinder = Cycles.or(Cycles.all(), Cycles.vertexShort());
-        
-        Aromaticity tmpDaylightModel = new Aromaticity(ElectronDonation.daylight(), tmpCycleFinder);
-        Aromaticity tmpCdkModel = new Aromaticity(ElectronDonation.cdk(), tmpCycleFinder);
-        Aromaticity tmpPiBondsModel = new Aromaticity(ElectronDonation.piBonds(), tmpCycleFinder);
-        Aromaticity tmpCdkAllowingExocyclicModel = new Aromaticity(ElectronDonation.cdkAllowingExocyclic(), tmpCycleFinder);
-        Aromaticity tmpCDKLegacyModel = Aromaticity.cdkLegacy();
-        
-        boolean tmpAreMultiplesCounted = true;
-        
-        this.calculateAbsoluteFGFrequencies(tmpReaders[0], 
-                ErtlFunctionalGroupsFinderEvaluationTest.DAYLIGHT_MODEL_SETTINGS_KEY, tmpDaylightModel, tmpAreMultiplesCounted);
-        this.calculateAbsoluteFGFrequencies(tmpReaders[1], 
-                ErtlFunctionalGroupsFinderEvaluationTest.CDK_MODEL_SETTINGS_KEY, tmpCdkModel, tmpAreMultiplesCounted);
-        this.calculateAbsoluteFGFrequencies(tmpReaders[2], 
-                ErtlFunctionalGroupsFinderEvaluationTest.PIBONDS_MODEL_SETTINGS_KEY, tmpPiBondsModel, tmpAreMultiplesCounted);
-        this.calculateAbsoluteFGFrequencies(tmpReaders[3], 
-                ErtlFunctionalGroupsFinderEvaluationTest.CDK_EXOCYCLIC_MODEL_SETTINGS_KEY, tmpCdkAllowingExocyclicModel, tmpAreMultiplesCounted);
-        this.calculateAbsoluteFGFrequencies(tmpReaders[4], 
-                ErtlFunctionalGroupsFinderEvaluationTest.CDK_LEGACY_MODEL_SETTINGS_KEY, tmpCDKLegacyModel, tmpAreMultiplesCounted);
-        
-        System.out.println("\nAll analyses are done!");
-        for (IteratingSDFReader tmpReader : tmpReaders) {
-            tmpReader.close();
-        }
-        this.saveData();
-        System.out.println("\nFinished!");
-        System.out.println("\nNumber of occured exceptions: " + this.exceptionsCounter);
-    }
-    
-    /**
-     * Test for analyzing ChEBI 3 star database for all four different electron donation models supplied by the cdk: daylight, cdk,
-     * piBonds, cdkAllowingExocyclic and the aromaticity model cdkLegacy.
-     * <p>
-     * Difference to analyzeChebi3Star(): If the same functional group occurs multiple times in the same molecule
-     * it is counted only once
-     *
-     * @throws java.lang.Exception if initializeWithFileOperations() throws an exception or an unexpected exception occurs
-     */
-    @Test
-    public void analyzeChebi3StarNoMultiples() throws Exception {
-        this.initializeWithFileOperations(ErtlFunctionalGroupsFinderEvaluationTest.CHEBI_3STAR_SD_FILE_PATH, 
-                ErtlFunctionalGroupsFinderEvaluationTest.CHEBI_3STAR_NO_MULTIPLES_TEST_IDENTIFIER);
-        Assume.assumeTrue(this.isTestAbleToRun);
-        
-        System.out.println("\nLoading file with path: " + ErtlFunctionalGroupsFinderEvaluationTest.CHEBI_3STAR_SD_FILE_PATH);
-        File tmpChebiSDFile = new File(ErtlFunctionalGroupsFinderEvaluationTest.CHEBI_3STAR_SD_FILE_PATH);
-        int tmpRequiredNumberOfReaders = 5;
-        IteratingSDFReader[] tmpReaders = new IteratingSDFReader[tmpRequiredNumberOfReaders];
-        try {
-            for (int i = 0; i < tmpRequiredNumberOfReaders; i++) {
-                IteratingSDFReader tmpChebiReader = new IteratingSDFReader(new FileInputStream(tmpChebiSDFile),
-                        DefaultChemObjectBuilder.getInstance(), true);
-                tmpReaders[i] = tmpChebiReader;
-            }
-        } catch (FileNotFoundException aFileNotFoundException) {
-            System.out.println("\nSD file could not be found. Test is ignored.");
-            Assume.assumeTrue(false);
-            return;
-        }
-        //If the 'all' CycleFinder produces an Intractable exception the 'vertexShort' CycleFinder is used
-        CycleFinder tmpCycleFinder = Cycles.or(Cycles.all(), Cycles.vertexShort());
-        
-        Aromaticity tmpDaylightModel = new Aromaticity(ElectronDonation.daylight(), tmpCycleFinder);
-        Aromaticity tmpCdkModel = new Aromaticity(ElectronDonation.cdk(), tmpCycleFinder);
-        Aromaticity tmpPiBondsModel = new Aromaticity(ElectronDonation.piBonds(), tmpCycleFinder);
-        Aromaticity tmpCdkAllowingExocyclicModel = new Aromaticity(ElectronDonation.cdkAllowingExocyclic(), tmpCycleFinder);
-        Aromaticity tmpCDKLegacyModel = Aromaticity.cdkLegacy();
-        
-        boolean tmpAreMultiplesCounted = false;
-        
-        this.calculateAbsoluteFGFrequencies(tmpReaders[0], 
-                ErtlFunctionalGroupsFinderEvaluationTest.DAYLIGHT_MODEL_SETTINGS_KEY, tmpDaylightModel, tmpAreMultiplesCounted);
-        this.calculateAbsoluteFGFrequencies(tmpReaders[1], 
-                ErtlFunctionalGroupsFinderEvaluationTest.CDK_MODEL_SETTINGS_KEY, tmpCdkModel, tmpAreMultiplesCounted);
-        this.calculateAbsoluteFGFrequencies(tmpReaders[2], 
-                ErtlFunctionalGroupsFinderEvaluationTest.PIBONDS_MODEL_SETTINGS_KEY, tmpPiBondsModel, tmpAreMultiplesCounted);
-        this.calculateAbsoluteFGFrequencies(tmpReaders[3], 
-                ErtlFunctionalGroupsFinderEvaluationTest.CDK_EXOCYCLIC_MODEL_SETTINGS_KEY, tmpCdkAllowingExocyclicModel, tmpAreMultiplesCounted);
-        this.calculateAbsoluteFGFrequencies(tmpReaders[4], 
-                ErtlFunctionalGroupsFinderEvaluationTest.CDK_LEGACY_MODEL_SETTINGS_KEY, tmpCDKLegacyModel, tmpAreMultiplesCounted);
-        
-        System.out.println("\nAll analyses are done!");
-        for (IteratingSDFReader tmpReader : tmpReaders) {
-            tmpReader.close();
-        }
-        this.saveData();
-        System.out.println("\nFinished!");
-        System.out.println("\nNumber of occured exceptions: " + this.exceptionsCounter);
-    }
-    
-    /**
-     * Test for analyzing ChEMBL database for all four different electron donation models supplied by the cdk: daylight, cdk,
-     * piBonds, cdkAllowingExocyclic and the aromaticity model cdkLegacy.
-     * <p>
-     * (Functional groups occurring multiple times in the same molecule are counted multiple times)
-     *
-     * @throws java.lang.Exception if initializeWithFileOperations() throws an exception or an unexpected exception occurs
-     */
-    @Test
-    public void analyzeChembl() throws Exception {
-        this.initializeWithFileOperations(ErtlFunctionalGroupsFinderEvaluationTest.CHEMBL_SD_FILE_PATH, 
-                ErtlFunctionalGroupsFinderEvaluationTest.CHEMBL_TEST_IDENTIFIER);
-        Assume.assumeTrue(this.isTestAbleToRun);
-        
-        System.out.println("\nLoading file with path: " + ErtlFunctionalGroupsFinderEvaluationTest.CHEMBL_SD_FILE_PATH);
-        File tmpChebiSDFile = new File(ErtlFunctionalGroupsFinderEvaluationTest.CHEMBL_SD_FILE_PATH);
-        int tmpRequiredNumberOfReaders = 5;
-        IteratingSDFReader[] tmpReaders = new IteratingSDFReader[tmpRequiredNumberOfReaders];
-        try {
-            for (int i = 0; i < tmpRequiredNumberOfReaders; i++) {
-                IteratingSDFReader tmpChebiReader = new IteratingSDFReader(new FileInputStream(tmpChebiSDFile),
-                        DefaultChemObjectBuilder.getInstance(), true);
-                tmpReaders[i] = tmpChebiReader;
-            }
-        } catch (FileNotFoundException aFileNotFoundException) {
-            System.out.println("\nSD file could not be found. Test is ignored.");
-            Assume.assumeTrue(false);
-            return;
-        }
-        //If the 'all' CycleFinder produces an Intractable exception the 'vertexShort' CycleFinder is used
-        CycleFinder tmpCycleFinder = Cycles.or(Cycles.all(), Cycles.vertexShort());
-        
-        Aromaticity tmpDaylightModel = new Aromaticity(ElectronDonation.daylight(), tmpCycleFinder);
-        Aromaticity tmpCdkModel = new Aromaticity(ElectronDonation.cdk(), tmpCycleFinder);
-        Aromaticity tmpPiBondsModel = new Aromaticity(ElectronDonation.piBonds(), tmpCycleFinder);
-        Aromaticity tmpCdkAllowingExocyclicModel = new Aromaticity(ElectronDonation.cdkAllowingExocyclic(), tmpCycleFinder);
-        Aromaticity tmpCDKLegacyModel = Aromaticity.cdkLegacy();
-        
-        boolean tmpAreMultiplesCounted = true;
-        
-        this.calculateAbsoluteFGFrequencies(tmpReaders[0], 
-                ErtlFunctionalGroupsFinderEvaluationTest.DAYLIGHT_MODEL_SETTINGS_KEY, tmpDaylightModel, tmpAreMultiplesCounted);
-        this.calculateAbsoluteFGFrequencies(tmpReaders[1], 
-                ErtlFunctionalGroupsFinderEvaluationTest.CDK_MODEL_SETTINGS_KEY, tmpCdkModel, tmpAreMultiplesCounted);
-        this.calculateAbsoluteFGFrequencies(tmpReaders[2], 
-                ErtlFunctionalGroupsFinderEvaluationTest.PIBONDS_MODEL_SETTINGS_KEY, tmpPiBondsModel, tmpAreMultiplesCounted);
-        this.calculateAbsoluteFGFrequencies(tmpReaders[3], 
-                ErtlFunctionalGroupsFinderEvaluationTest.CDK_EXOCYCLIC_MODEL_SETTINGS_KEY, tmpCdkAllowingExocyclicModel, tmpAreMultiplesCounted);
-        this.calculateAbsoluteFGFrequencies(tmpReaders[4], 
-                ErtlFunctionalGroupsFinderEvaluationTest.CDK_LEGACY_MODEL_SETTINGS_KEY, tmpCDKLegacyModel, tmpAreMultiplesCounted);
-        
-        System.out.println("\nAll analyses are done!");
-        for (IteratingSDFReader tmpReader : tmpReaders) {
-            tmpReader.close();
-        }
-        this.saveData();
-        System.out.println("\nFinished!");
-        System.out.println("\nNumber of occured exceptions: " + this.exceptionsCounter);
-    }
-    
-    /**
-     * Test for analyzing ChEMBL database for all four different electron donation models supplied by the cdk: daylight, cdk,
-     * piBonds, cdkAllowingExocyclic and the aromaticity model cdkLegacy.
-     * <p>
-     * Difference to analyzeChembl(): If the same functional group occurs multiple times in the same molecule
-     * it is counted only once
-     *
-     * @throws java.lang.Exception if initializeWithFileOperations() throws an exception or an unexpected exception occurs
-     */
-    @Test
-    public void analyzeChemblNoMultiples() throws Exception {
-        this.initializeWithFileOperations(ErtlFunctionalGroupsFinderEvaluationTest.CHEMBL_SD_FILE_PATH, 
-                ErtlFunctionalGroupsFinderEvaluationTest.CHEMBL_NO_MULTIPLES_TEST_IDENTIFIER);
-        Assume.assumeTrue(this.isTestAbleToRun);
-        
-        System.out.println("\nLoading file with path: " + ErtlFunctionalGroupsFinderEvaluationTest.CHEMBL_SD_FILE_PATH);
-        File tmpChebiSDFile = new File(ErtlFunctionalGroupsFinderEvaluationTest.CHEMBL_SD_FILE_PATH);
-        int tmpRequiredNumberOfReaders = 5;
-        IteratingSDFReader[] tmpReaders = new IteratingSDFReader[tmpRequiredNumberOfReaders];
-        try {
-            for (int i = 0; i < tmpRequiredNumberOfReaders; i++) {
-                IteratingSDFReader tmpChebiReader = new IteratingSDFReader(new FileInputStream(tmpChebiSDFile),
-                        DefaultChemObjectBuilder.getInstance(), true);
-                tmpReaders[i] = tmpChebiReader;
-            }
-        } catch (FileNotFoundException aFileNotFoundException) {
-            System.out.println("\nSD file could not be found. Test is ignored.");
-            Assume.assumeTrue(false);
-            return;
-        }
-        //If the 'all' CycleFinder produces an Intractable exception the 'vertexShort' CycleFinder is used
-        CycleFinder tmpCycleFinder = Cycles.or(Cycles.all(), Cycles.vertexShort());
-        
-        Aromaticity tmpDaylightModel = new Aromaticity(ElectronDonation.daylight(), tmpCycleFinder);
-        Aromaticity tmpCdkModel = new Aromaticity(ElectronDonation.cdk(), tmpCycleFinder);
-        Aromaticity tmpPiBondsModel = new Aromaticity(ElectronDonation.piBonds(), tmpCycleFinder);
-        Aromaticity tmpCdkAllowingExocyclicModel = new Aromaticity(ElectronDonation.cdkAllowingExocyclic(), tmpCycleFinder);
-        Aromaticity tmpCDKLegacyModel = Aromaticity.cdkLegacy();
-        
-        boolean tmpAreMultiplesCounted = false;
-        
-        this.calculateAbsoluteFGFrequencies(tmpReaders[0], 
-                ErtlFunctionalGroupsFinderEvaluationTest.DAYLIGHT_MODEL_SETTINGS_KEY, tmpDaylightModel, tmpAreMultiplesCounted);
-        this.calculateAbsoluteFGFrequencies(tmpReaders[1],
-                ErtlFunctionalGroupsFinderEvaluationTest.CDK_MODEL_SETTINGS_KEY, tmpCdkModel, tmpAreMultiplesCounted);
-        this.calculateAbsoluteFGFrequencies(tmpReaders[2], 
-                ErtlFunctionalGroupsFinderEvaluationTest.PIBONDS_MODEL_SETTINGS_KEY, tmpPiBondsModel, tmpAreMultiplesCounted);
-        this.calculateAbsoluteFGFrequencies(tmpReaders[3], 
-                ErtlFunctionalGroupsFinderEvaluationTest.CDK_EXOCYCLIC_MODEL_SETTINGS_KEY, tmpCdkAllowingExocyclicModel, tmpAreMultiplesCounted);
-        this.calculateAbsoluteFGFrequencies(tmpReaders[4], 
-                ErtlFunctionalGroupsFinderEvaluationTest.CDK_LEGACY_MODEL_SETTINGS_KEY, tmpCDKLegacyModel, tmpAreMultiplesCounted);
-        
-        System.out.println("\nAll analyses are done!");
-        for (IteratingSDFReader tmpReader : tmpReaders) {
-            tmpReader.close();
-        }
-        this.saveData();
-        System.out.println("\nFinished!");
-        System.out.println("\nNumber of occured exceptions: " + this.exceptionsCounter);
-    }
-    
-    /**
-     * Test for analyzing ChEMBL database for six different CycleFinder settings supplied by the cdk: all(), vertexShort(),
-     * relevant(), essential(), tripleShort() and cdkAromaticSet().
-     * <p>
-     * (Functional groups occurring multiple times in the same molecule are counted multiple times)
-     *
-     * @throws java.lang.Exception if initializeWithFileOperations() throws an exception or an unexpected exception occurs
-     */
-    @Test
-    public void analyzeCycleFinderDependency() throws Exception {
-        this.initializeWithFileOperations(ErtlFunctionalGroupsFinderEvaluationTest.CHEMBL_SD_FILE_PATH, 
+    public void testCycleFinderDependency() throws Exception {
+        this.initializeWithFileOperations(ErtlFunctionalGroupsFinderEvaluationTest.SD_FILE_PATH, 
                 ErtlFunctionalGroupsFinderEvaluationTest.CYCLE_FINDER_TEST_IDENTIFIER);
         Assume.assumeTrue(this.isTestAbleToRun);
         
-        System.out.println("\nLoading file with path: " + ErtlFunctionalGroupsFinderEvaluationTest.CHEMBL_SD_FILE_PATH);
-        File tmpChebiSDFile = new File(ErtlFunctionalGroupsFinderEvaluationTest.CHEMBL_SD_FILE_PATH);
+        System.out.println("\nLoading file with path: " + ErtlFunctionalGroupsFinderEvaluationTest.SD_FILE_PATH);
+        File tmpSDFile = new File(ErtlFunctionalGroupsFinderEvaluationTest.SD_FILE_PATH);
         int tmpRequiredNumberOfReaders = 6;
         IteratingSDFReader[] tmpReaders = new IteratingSDFReader[tmpRequiredNumberOfReaders];
         try {
             for (int i = 0; i < tmpRequiredNumberOfReaders; i++) {
-                IteratingSDFReader tmpChebiReader = new IteratingSDFReader(new FileInputStream(tmpChebiSDFile),
+                IteratingSDFReader tmpReader = new IteratingSDFReader(new FileInputStream(tmpSDFile),
                         DefaultChemObjectBuilder.getInstance(), true);
-                tmpReaders[i] = tmpChebiReader;
+                tmpReaders[i] = tmpReader;
             }
         } catch (FileNotFoundException aFileNotFoundException) {
             System.out.println("\nSD file could not be found. Test is ignored.");
@@ -923,7 +560,7 @@ public class ErtlFunctionalGroupsFinderEvaluationTest extends CDKTestCase {
     }
     
     /**
-     * Testing the ErtlFunctionalGroupsFinder.find() method's performance on ChEBI.
+     * Testing the ErtlFunctionalGroupsFinder.find() method's performance on the given SD file.
      * 
      * @throws java.lang.Exception if initializeWithFileOperations() throws an exception or the IteratingSDFReader 
      * can not be closed or an unexpectedException occurs
@@ -932,7 +569,7 @@ public class ErtlFunctionalGroupsFinderEvaluationTest extends CDKTestCase {
     public void testPerformance() throws Exception {
         this.initialize(true, "PerformanceTest");
         //First, check if the SD file is present and ignore test if it is not
-        String tmpPathToSDFile = ErtlFunctionalGroupsFinderEvaluationTest.CHEBI_SD_FILE_PATH;
+        String tmpPathToSDFile = ErtlFunctionalGroupsFinderEvaluationTest.SD_FILE_PATH;
         System.out.println("\nLoading file with path: " + tmpPathToSDFile);
         File tmpSDFile = new File(tmpPathToSDFile);
         if (!tmpSDFile.canRead()) {
@@ -1077,6 +714,67 @@ public class ErtlFunctionalGroupsFinderEvaluationTest extends CDKTestCase {
     
     //<editor-fold defaultstate="collapsed" desc="Private methods">
     /**
+     * Analyzes molecules in an SD file for all four different electron donation models supplied by the cdk: 
+     * daylight, cdk, piBonds, cdkAllowingExocyclic and the aromaticity model cdkLegacy.
+     * 
+     * @param anSDFilePath absolute path of the SD file to analyze
+     * @param aTestIdentifier a folder with this name will be created in the output directory and it will be added to 
+     * the output and log files' names for association of test and files; may be null or empty
+     * @param anAreMultiplesCounted if false, functional groups that occur multiple times in the same molecule will 
+     * only be counted once
+     * @throws java.lang.Exception if initializeWithFileOperations() throws an exception or an unexpected exception occurs
+     */
+    private void analyzeElectronDonationDependency(String anSDFilePath, 
+            String aTestIdentifier, 
+            boolean anAreMultiplesCounted) throws Exception {
+        this.initializeWithFileOperations(anSDFilePath, aTestIdentifier);
+        Assume.assumeTrue(this.isTestAbleToRun);
+        
+        System.out.println("\nLoading file with path: " + anSDFilePath);
+        File tmpSDFile = new File(anSDFilePath);
+        int tmpRequiredNumberOfReaders = 5;
+        IteratingSDFReader[] tmpReaders = new IteratingSDFReader[tmpRequiredNumberOfReaders];
+        try {
+            for (int i = 0; i < tmpRequiredNumberOfReaders; i++) {
+                IteratingSDFReader tmpReader = new IteratingSDFReader(new FileInputStream(tmpSDFile),
+                        DefaultChemObjectBuilder.getInstance(), true);
+                tmpReaders[i] = tmpReader;
+            }
+        } catch (FileNotFoundException aFileNotFoundException) {
+            System.out.println("\nSD file could not be found. Test is ignored.");
+            Assume.assumeTrue(false);
+            return;
+        }
+        //If the 'all' CycleFinder produces an Intractable exception the 'vertexShort' CycleFinder is used
+        CycleFinder tmpCycleFinder = Cycles.or(Cycles.all(), Cycles.vertexShort());
+        
+        Aromaticity tmpDaylightModel = new Aromaticity(ElectronDonation.daylight(), tmpCycleFinder);
+        Aromaticity tmpCdkModel = new Aromaticity(ElectronDonation.cdk(), tmpCycleFinder);
+        Aromaticity tmpPiBondsModel = new Aromaticity(ElectronDonation.piBonds(), tmpCycleFinder);
+        Aromaticity tmpCdkAllowingExocyclicModel = new Aromaticity(ElectronDonation.cdkAllowingExocyclic(), tmpCycleFinder);
+        Aromaticity tmpCDKLegacyModel = Aromaticity.cdkLegacy();
+        
+        this.calculateAbsoluteFGFrequencies(tmpReaders[0], 
+                ErtlFunctionalGroupsFinderEvaluationTest.DAYLIGHT_MODEL_SETTINGS_KEY, tmpDaylightModel, anAreMultiplesCounted);
+        this.calculateAbsoluteFGFrequencies(tmpReaders[1], 
+                ErtlFunctionalGroupsFinderEvaluationTest.CDK_MODEL_SETTINGS_KEY, tmpCdkModel, anAreMultiplesCounted);
+        this.calculateAbsoluteFGFrequencies(tmpReaders[2], 
+                ErtlFunctionalGroupsFinderEvaluationTest.PIBONDS_MODEL_SETTINGS_KEY, tmpPiBondsModel, anAreMultiplesCounted);
+        this.calculateAbsoluteFGFrequencies(tmpReaders[3], 
+                ErtlFunctionalGroupsFinderEvaluationTest.CDK_EXOCYCLIC_MODEL_SETTINGS_KEY, tmpCdkAllowingExocyclicModel, anAreMultiplesCounted);
+        this.calculateAbsoluteFGFrequencies(tmpReaders[4], 
+                ErtlFunctionalGroupsFinderEvaluationTest.CDK_LEGACY_MODEL_SETTINGS_KEY, tmpCDKLegacyModel, anAreMultiplesCounted);
+        
+        System.out.println("\nAll analyses are done!");
+        for (IteratingSDFReader tmpReader : tmpReaders) {
+            tmpReader.close();
+        }
+        this.saveData();
+        System.out.println("\nFinished!");
+        System.out.println("\nNumber of occured exceptions: " + this.exceptionsCounter);
+    }
+    
+    /**
      * Initializes all class variables except the working directory and the PrintWriter instances. This method should be 
      * called directly when a test does not require any of the specific file operations like logging or reading an SD file.
      * 
@@ -1145,7 +843,7 @@ public class ErtlFunctionalGroupsFinderEvaluationTest extends CDKTestCase {
     /**
      * Initializes all class variables and determines the output directory.
      * 
-     * @param aPathOfSDFile absolute path of the SD file to analyze for a quick pre-check if it is present and the test 
+     * @param anSDFilePath absolute path of the SD file to analyze for a quick pre-check if it is present and the test 
      * is therefore meant to run; may be empty but not null
      * @param aTestIdentifier a folder with this name will be created in the output directory and it will be added to 
      * the output and log files' names for association of test and files; may be null or empty
@@ -1153,15 +851,15 @@ public class ErtlFunctionalGroupsFinderEvaluationTest extends CDKTestCase {
      * Integer.MAX-VALUE tests are to be run this minute (error in the naming of output files), aPathOfSDFile is null or 
      * an unexpected exception occurs.
      */
-    private void initializeWithFileOperations(String aPathOfSDFile, String aTestIdentifier) throws Exception {
+    private void initializeWithFileOperations(String anSDFilePath, String aTestIdentifier) throws Exception {
         System.out.println("\n#########################################################################\n");
         System.out.println("Starting new test, identifier: " + aTestIdentifier);
         System.out.println("\nInitializing class variables...");
         this.isTestAbleToRun = true;
         //First, check if the SD file is present and ignore test if it is not
-        File tmpSDFile = new File(aPathOfSDFile);
+        File tmpSDFile = new File(anSDFilePath);
         if (!tmpSDFile.canRead() || tmpSDFile.getAbsoluteFile().getParent() == null) {
-            System.out.println("\n\tUnable to find or read a file with path \"" + aPathOfSDFile + "\" or to get its parent directory.");
+            System.out.println("\n\tUnable to find or read a file with path \"" + anSDFilePath + "\" or to get its parent directory.");
             System.out.println("\nTest is ignored.");
             this.isTestAbleToRun = false;
             Assume.assumeTrue(false);
@@ -1245,7 +943,7 @@ public class ErtlFunctionalGroupsFinderEvaluationTest extends CDKTestCase {
             tmpOutputFile = new File(this.outputDirectory+ File.separator + aTestIdentifier 
                     + ErtlFunctionalGroupsFinderEvaluationTest.FILE_NAME_ADDITION_SEPERATOR 
                     + ErtlFunctionalGroupsFinderEvaluationTest.OUTPUT_FILE_NAME 
-                    + FILE_NAME_ADDITION_SEPERATOR 
+                    + ErtlFunctionalGroupsFinderEvaluationTest.FILE_NAME_ADDITION_SEPERATOR 
                     + tmpDateTimeAddition 
                     + "(" + tmpFilesInThisMinuteCounter + ")" 
                     + ErtlFunctionalGroupsFinderEvaluationTest.OUTPUT_FILE_TYPE);
@@ -1253,7 +951,7 @@ public class ErtlFunctionalGroupsFinderEvaluationTest extends CDKTestCase {
             tmpOutputFile = new File(this.outputDirectory+ File.separator + aTestIdentifier 
                     + ErtlFunctionalGroupsFinderEvaluationTest.FILE_NAME_ADDITION_SEPERATOR
                     + ErtlFunctionalGroupsFinderEvaluationTest.OUTPUT_FILE_NAME 
-                    + FILE_NAME_ADDITION_SEPERATOR 
+                    + ErtlFunctionalGroupsFinderEvaluationTest.FILE_NAME_ADDITION_SEPERATOR 
                     + tmpDateTimeAddition 
                     + ErtlFunctionalGroupsFinderEvaluationTest.OUTPUT_FILE_TYPE);
         }
@@ -1612,8 +1310,8 @@ public class ErtlFunctionalGroupsFinderEvaluationTest extends CDKTestCase {
     
     /**
      * Writes all frequency data with the respective hash code, SMILES code, pseudo SMILES code and the ChEBI or ChEMBL 
-     * id of an exemplary molecule that contains this functional group for all functional groups in the master HashMap 
-     * to the output file.
+     * id or CDK title of an exemplary molecule that contains this functional group for all functional groups in the 
+     * master HashMap to the output file.
      * <p>
      * Note: The IAtomContainer object stored in the master HashMap's inner maps are cloned in this method for pseudo 
      * SMILES creation. And all PrintWriter instances will be closed.
